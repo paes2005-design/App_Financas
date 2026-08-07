@@ -8,6 +8,7 @@ import "./transferencias.js";
 import "./cartoes.js";
 import "./transaction-actions.js";
 import "./quick-settlement.js";
+import "./planned-edit-guard.js";
 import "./recurrence.js";
 import "./recurrence-period-bridge.js";
 import "./planned-settlement.js";
