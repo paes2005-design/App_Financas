@@ -4,7 +4,32 @@ const pageTitle = document.getElementById("pageTitle");
 const placeholder = document.getElementById("placeholderView");
 const placeholderTitle = document.getElementById("placeholderTitle");
 
-menuButton.addEventListener("click", () => sidebar.classList.toggle("open"));
+let menuHistoryActive=false;
+
+function openMenu(){
+  if(sidebar.classList.contains("open"))return;
+  sidebar.classList.add("open");
+  if(!menuHistoryActive){
+    history.pushState({appOverlay:"sidebar"},"");
+    menuHistoryActive=true;
+  }
+}
+
+function closeMenu({fromHistory=false}={}){
+  if(!sidebar.classList.contains("open"))return;
+  sidebar.classList.remove("open");
+  if(fromHistory){menuHistoryActive=false;return;}
+  if(menuHistoryActive)history.back();
+}
+
+menuButton.addEventListener("click",()=>{
+  if(sidebar.classList.contains("open"))closeMenu();
+  else openMenu();
+});
+
+window.addEventListener("popstate",()=>{
+  if(sidebar.classList.contains("open"))closeMenu({fromHistory:true});
+});
 
 function abrirPagina(page, titulo) {
   document.querySelectorAll(".app-view").forEach((view) => view.classList.add("hidden"));
@@ -23,6 +48,6 @@ document.querySelectorAll(".nav-item").forEach((button) => {
     const titulo = button.textContent.trim();
     pageTitle.textContent = titulo;
     abrirPagina(button.dataset.page, titulo);
-    sidebar.classList.remove("open");
+    closeMenu();
   });
 });
