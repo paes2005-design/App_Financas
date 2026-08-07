@@ -18,6 +18,7 @@ import "./card-finance-rules-v3.js";
 import "./card-fixed-sync-v2.js";
 import "./recurrence-auto-sync-v2.js";
 import "./transaction-form-experience.js";
+import "./workflow-polish.js";
 import "./remaining-modules.js";
 import "./period-views.js";
 import "./dashboard.js";
