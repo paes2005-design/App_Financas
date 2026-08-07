@@ -30,21 +30,40 @@ if(!mini&&saldoTotal){
 
 function current(rows){const p=getPeriod("dashboard");return rows.filter(r=>r.data>=p.start&&r.data<=p.end);}
 async function convertedRows(rows){if(!rows.length)return 0;return (await convertAccountsToBRL(rows.map(r=>({moeda:r.moeda||"BRL",saldoInicial:Number(r.valor||0)})))).total;}
+function monthKey(date){return String(date).slice(0,7);}
+function timestampDate(value){
+  if(!value)return null;
+  if(typeof value.toDate==="function")return value.toDate();
+  if(typeof value.seconds==="number")return new Date(value.seconds*1000);
+  const d=new Date(value);return Number.isNaN(d.getTime())?null:d;
+}
+function accountStartMonth(acc){
+  const d=timestampDate(acc.criadoEm||acc.createdAt||acc.dataCriacao);
+  return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:monthKey(new Date().toISOString());
+}
 
+// O saldo inicial é tratado por competência mensal:
+// - antes do mês em que a conta entrou no app, ela vale zero;
+// - no mês de entrada, começa no saldo inicial cadastrado;
+// - nos meses seguintes, o Inicial corresponde ao fechamento REAL do mês anterior.
 async function openingBalance(){
   if(!user)return 0;
-  const p=getPeriod("dashboard");
+  const p=getPeriod("dashboard"),selectedMonth=monthKey(p.start);
   const accountsSnap=await getDocs(collection(db,"users",user.uid,"contas"));
   const currencyTotals=new Map();
   await Promise.all(accountsSnap.docs.map(async accDoc=>{
     const acc={id:accDoc.id,...accDoc.data()};
+    const startMonth=accountStartMonth(acc);
+    if(selectedMonth<startMonth)return; // meses anteriores ao início não carregam saldo algum
     const base=`users/${user.uid}/contas/${acc.id}`;
     const [currSnap,movSnap]=await Promise.all([
       getDocs(collection(db,base,"moedas")),
       getDocs(collection(db,base,"movimentacoes"))
     ]);
     const currencies=[{codigo:acc.moeda||"BRL",saldoInicial:Number(acc.saldoInicial||0)},...currSnap.docs.map(d=>d.data())];
-    const movs=movSnap.docs.map(d=>d.data()).filter(m=>m.data&&m.data<p.start);
+    // Somente movimentações efetivadas antes do início do mês entram no saldo Inicial.
+    // Lançamentos planejados servem para a Previsão, não para o fechamento já realizado.
+    const movs=movSnap.docs.map(d=>d.data()).filter(m=>m.data&&m.data<p.start&&m.planejada!==true);
     currencies.forEach(c=>{
       const code=c.codigo||"BRL";
       let value=Number(c.saldoInicial||0);
@@ -53,16 +72,17 @@ async function openingBalance(){
     });
   }));
   if(!currencyTotals.size)return 0;
-  const result=await convertAccountsToBRL([...currencyTotals].map(([moeda,saldoInicial])=>({moeda,saldoInicial})));
-  return result.total;
+  return (await convertAccountsToBRL([...currencyTotals].map(([moeda,saldoInicial])=>({moeda,saldoInicial})))).total;
 }
 
 async function render(){
   if(!mini)return;
   const my=++token;
   try{
-    const [initial,totalR,totalD]=await Promise.all([openingBalance(),convertedRows(current(receitas)),convertedRows(current(despesas))]);
+    const monthReceitas=current(receitas),monthDespesas=current(despesas);
+    const [initial,totalR,totalD]=await Promise.all([openingBalance(),convertedRows(monthReceitas),convertedRows(monthDespesas)]);
     if(my!==token)return;
+    // Previsão do mês = saldo trazido do fechamento do mês anterior + todas as entradas previstas - todas as saídas previstas.
     const forecast=initial+totalR-totalD;
     const initialEl=document.getElementById("dashboardInitialBalance"),forecastEl=document.getElementById("dashboardForecastBalance");
     if(initialEl)initialEl.textContent=formatMoney(initial,"BRL");
