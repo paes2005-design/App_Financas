@@ -13,8 +13,24 @@ const style=document.createElement("style");style.textContent=`.settlement-contr
 function records(kind){return kind==="receita"?receitas:kind==="despesa"?despesas:transferencias;}
 const configs=[{kind:"receita",selector:".delete-revenue"},{kind:"despesa",selector:".delete-expense"},{kind:"transferencia",selector:".delete-transfer"}];
 function isDone(r){return r.efetivada===true||Boolean(r.dataEfetivacao)||Boolean(r.movimentacaoId)||Boolean(r.movSaida)||Boolean(r.movEntrada);}
-function decorate(){configs.forEach(({kind,selector})=>document.querySelectorAll(selector).forEach(del=>{const id=del.dataset.id,record=records(kind).find(r=>r.id===id),actions=del.parentElement;if(!record||!actions)return;actions.querySelector(`[data-settle-id="${id}"]`)?.remove();const holder=document.createElement("span");holder.dataset.settleId=id;if(!isDone(record)){holder.innerHTML=`<label class="settlement-control"><input type="checkbox" data-settle-kind="${kind}" data-settle-record="${id}"> Efetivar</label>`;}else{holder.innerHTML=`<span class="settlement-done">✓ Efetivada</span>`;}actions.insertBefore(holder,actions.firstChild);}));}
-let observerTimer=null;const observer=new MutationObserver(()=>{clearTimeout(observerTimer);observerTimer=setTimeout(decorate,30);});observer.observe(document.body,{childList:true,subtree:true});
+function decorate(){
+  configs.forEach(({kind,selector})=>document.querySelectorAll(selector).forEach(del=>{
+    const id=del.dataset.id,record=records(kind).find(r=>r.id===id),actions=del.parentElement;
+    if(!record||!actions)return;
+    let holder=actions.querySelector(`[data-settle-id="${id}"]`);
+    const done=isDone(record),wanted=done?"done":"pending";
+    if(holder&&holder.dataset.state===wanted)return;
+    if(!holder){holder=document.createElement("span");holder.dataset.settleId=id;actions.insertBefore(holder,actions.firstChild);}
+    holder.dataset.state=wanted;
+    holder.innerHTML=done?`<span class="settlement-done">✓ Efetivada</span>`:`<label class="settlement-control"><input type="checkbox" data-settle-kind="${kind}" data-settle-record="${id}"> Efetivar</label>`;
+  }));
+}
+let observerTimer=null;
+const observer=new MutationObserver(mutations=>{
+  if(!mutations.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&!(n.matches?.('[data-settle-id]')||n.closest?.('[data-settle-id]')))))return;
+  clearTimeout(observerTimer);observerTimer=setTimeout(decorate,40);
+});
+observer.observe(document.body,{childList:true,subtree:true});
 
 function labels(kind){if(kind==="receita")return{title:"Efetivar receita",date:"Data do recebimento",value:"Valor recebido",verb:"o recebimento"};if(kind==="despesa")return{title:"Efetivar despesa",date:"Data do pagamento",value:"Valor pago",verb:"o pagamento"};return{title:"Efetivar transferência",date:"Data da transferência",value:"Valor transferido",verb:"a transferência"};}
 function modal(kind,record){return new Promise(resolve=>{document.getElementById("settlementModal")?.remove();const l=labels(kind),m=document.createElement("div");m.id="settlementModal";m.className="settlement-modal";m.innerHTML=`<div class="settlement-backdrop"></div><section class="settlement-card"><h3>${l.title}</h3><p>${record.descricao||"Operação prevista"} · previsto ${formatMoney(record.valor||0,record.moeda||"BRL")}</p><label for="settlementDate">${l.date}</label><input id="settlementDate" type="date" value="${today()}"><label for="settlementValue">${l.value}</label><input id="settlementValue" type="text" inputmode="decimal" value="${moneyInput(record.valor)}"><small class="settlement-note">O valor efetivado pode ser diferente do previsto. Somente após confirmar ele entra no realizado.</small><div class="settlement-actions"><button type="button" class="settlement-cancel">Cancelar</button><button type="button" class="settlement-confirm">Confirmar</button></div></section>`;document.body.appendChild(m);const finish=v=>{m.remove();resolve(v);};m.querySelector(".settlement-cancel").onclick=()=>finish(null);m.querySelector(".settlement-backdrop").onclick=()=>finish(null);m.querySelector(".settlement-confirm").onclick=()=>{const data=m.querySelector("#settlementDate").value,valor=parseMoney(m.querySelector("#settlementValue").value);if(!data||valor<=0){alert("Informe a data e um valor maior que zero.");return;}finish({data,valor});};});}
