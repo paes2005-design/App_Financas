@@ -128,7 +128,7 @@ function rebuildDynamicFilters(){
   const accountsMap=new Map(rows.map(r=>[r.contaId,r.contaNome]));
   const catsMap=new Map(rows.map(r=>[r.categoriaId,r.categoriaNome]));
   const subs=[...new Set(rows.map(r=>r.subcategoria).filter(Boolean))].sort();
-  const currencies=[...new Set(rows.map(r=>r.moeda||"BRL")].sort((a,b)=>a==="BRL"?-1:b==="BRL"?1:a.localeCompare(b));
+  const currencies=[...new Set(rows.map(r=>r.moeda||"BRL"))].sort((a,b)=>a==="BRL"?-1:b==="BRL"?1:a.localeCompare(b));
   const keep={a:filterAccount.value,c:filterCategory.value,s:filterSub.value,m:filterCurrency.value};
   filterAccount.innerHTML=optionList([...accountsMap].map(([value,label])=>({value,label})),"Todas as contas");
   filterCategory.innerHTML=optionList([...catsMap].map(([value,label])=>({value,label})),"Todas as categorias");
