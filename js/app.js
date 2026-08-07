@@ -1,7 +1,10 @@
 import "./ui.js";
 import "./auth.js";
 import "./money.js";
+import { initBankPicker } from "./bank-picker.js";
 import "./contas.js";
+
+initBankPicker();
 
 if (!document.querySelector('link[href$="money.css"]')) {
   const moneyStyles = document.createElement("link");
