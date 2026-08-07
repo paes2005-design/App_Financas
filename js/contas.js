@@ -3,7 +3,7 @@ import { formatMoney, getMoneyCurrency, getMoneyValue, resetMoneyField, setMoney
 import { getBank, setBankPickerValue } from "./bank-picker.js";
 import { convertAccountsToBRL } from "./exchange.js";
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query,
+  addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query,
   serverTimestamp, setDoc, updateDoc
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
@@ -17,15 +17,65 @@ const addCurrencyForm=$("addCurrencyForm"), newCurrencyCode=$("newCurrencyCode")
 
 let usuarioAtual=null, pararContas=null, pararMoedas=null, pararMovimentos=null;
 let contasAtuais=[], contaSelecionada=null, moedasExtras=[], movimentos=[];
+let renderSequence=0;
 
 function msg(el,texto="",tipo=""){el.textContent=texto;el.className=`message ${tipo}`.trim();}
 function esc(v=""){return String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]);}
 function instituicao(){const chave=bancoInput.value;if(chave==="outro"){const nome=nomeLivreInput.value.trim();return{chave:"outro",nome,simbolo:nome?nome.slice(0,3).toUpperCase():"OUT",cor:"#607d8b",segmento:"Livre",logo:""};}const b=getBank(chave);return b?{chave:b.id,...b}:null;}
 function logo(c){if(!c.logo)return `<span class="bank-symbol" style="--bank-color:${esc(c.cor||"#607d8b")}">${esc(c.simbolo||"CTA")}</span>`;return `<span class="bank-symbol bank-logo" style="--bank-color:${esc(c.cor||"#607d8b")}"><img src="${esc(c.logo)}" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><span hidden>${esc(c.simbolo||"CTA")}</span></span>`;}
 
-async function atualizarTotal(contas){if(!contas.length){saldoTotal.textContent=formatMoney(0,"BRL");exchangeStatus.textContent="Aguardando contas.";return;}exchangeStatus.textContent="Atualizando cotações...";try{const r=await convertAccountsToBRL(contas);saldoTotal.textContent=formatMoney(r.total,"BRL");exchangeStatus.textContent=`Cotações de referência de ${r.latestDate||"data mais recente"}${r.unavailable.length?` · sem cotação: ${r.unavailable.join(", ")}`:""}`;}catch(e){const t=contas.filter(c=>(c.moeda||"BRL")==="BRL").reduce((s,c)=>s+Number(c.saldoInicial||0),0);saldoTotal.textContent=formatMoney(t,"BRL");exchangeStatus.textContent="Conversão indisponível; exibindo somente contas em BRL.";console.error(e);}}
+function calcularSaldoDaMoeda(saldoInicial,codigo,movimentosConta){
+  return movimentosConta
+    .filter((movimento)=>movimento.moeda===codigo)
+    .reduce((saldo,movimento)=>saldo+(movimento.tipo==="receita"?Number(movimento.valor||0):-Number(movimento.valor||0)),Number(saldoInicial||0));
+}
 
-function renderContas(contas){contasAtuais=contas;atualizarTotal(contas);if(!contas.length){lista.innerHTML='<div class="empty-state">Nenhuma conta cadastrada.</div>';fecharDetalhes();return;}lista.innerHTML=contas.map(c=>`<button type="button" class="account-item account-select ${contaSelecionada?.id===c.id?"selected":""}" data-id="${c.id}"><div class="account-main">${logo(c)}<div><strong>${esc(c.nome)}</strong><span>${esc(c.tipo)} · ${esc(c.moeda||"BRL")}</span></div></div><div class="account-value"><strong>${formatMoney(c.saldoInicial,c.moeda||"BRL")}</strong><small>Abrir detalhes</small></div></button>`).join("");}
+async function carregarSaldosCompletos(conta){
+  const base=`users/${usuarioAtual.uid}/contas/${conta.id}`;
+  const [moedasSnap,movimentosSnap]=await Promise.all([
+    getDocs(collection(db,base,"moedas")),
+    getDocs(collection(db,base,"movimentacoes"))
+  ]);
+  const extras=moedasSnap.docs.map((d)=>({id:d.id,...d.data()}));
+  const movs=movimentosSnap.docs.map((d)=>({id:d.id,...d.data()}));
+  const principal={codigo:conta.moeda||"BRL",saldoInicial:Number(conta.saldoInicial||0),principal:true};
+  const moedas=[principal,...extras.filter((m)=>m.codigo!==principal.codigo)];
+  const saldos=moedas.map((m)=>({
+    moeda:m.codigo,
+    saldoInicial:calcularSaldoDaMoeda(m.saldoInicial,m.codigo,movs)
+  }));
+  const conversao=await convertAccountsToBRL(saldos);
+  return {...conta,saldos,totalConvertidoBRL:conversao.total,conversionMeta:conversao};
+}
+
+async function atualizarTotaisELista(contas,sequence){
+  if(!contas.length){saldoTotal.textContent=formatMoney(0,"BRL");exchangeStatus.textContent="Aguardando contas.";return;}
+  exchangeStatus.textContent="Atualizando cotações e saldos...";
+  try{
+    const completas=await Promise.all(contas.map(carregarSaldosCompletos));
+    if(sequence!==renderSequence)return;
+    const totalGeral=completas.reduce((s,c)=>s+Number(c.totalConvertidoBRL||0),0);
+    saldoTotal.textContent=formatMoney(totalGeral,"BRL");
+    const datas=completas.map(c=>c.conversionMeta?.latestDate).filter(Boolean).sort();
+    const indisponiveis=[...new Set(completas.flatMap(c=>c.conversionMeta?.unavailable||[]))];
+    exchangeStatus.textContent=`Cotações de referência de ${datas.at(-1)||"data mais recente"}${indisponiveis.length?` · sem cotação: ${indisponiveis.join(", ")}`:""}`;
+    lista.innerHTML=completas.map(c=>`<button type="button" class="account-item account-select ${contaSelecionada?.id===c.id?"selected":""}" data-id="${c.id}"><div class="account-main">${logo(c)}<div><strong>${esc(c.nome)}</strong><span>${esc(c.tipo)} · ${c.saldos.length} moeda${c.saldos.length>1?"s":""}</span></div></div><div class="account-value"><strong>${formatMoney(c.totalConvertidoBRL,"BRL")}</strong><small>Total convertido · abrir detalhes</small></div></button>`).join("");
+  }catch(error){
+    if(sequence!==renderSequence)return;
+    const totalBRL=contas.filter(c=>(c.moeda||"BRL")==="BRL").reduce((s,c)=>s+Number(c.saldoInicial||0),0);
+    saldoTotal.textContent=formatMoney(totalBRL,"BRL");
+    exchangeStatus.textContent="Conversão indisponível; exibindo somente valores principais em BRL.";
+    console.error(error);
+  }
+}
+
+function renderContas(contas){
+  contasAtuais=contas;
+  const sequence=++renderSequence;
+  if(!contas.length){lista.innerHTML='<div class="empty-state">Nenhuma conta cadastrada.</div>';fecharDetalhes();atualizarTotaisELista([],sequence);return;}
+  lista.innerHTML=contas.map(c=>`<button type="button" class="account-item account-select ${contaSelecionada?.id===c.id?"selected":""}" data-id="${c.id}"><div class="account-main">${logo(c)}<div><strong>${esc(c.nome)}</strong><span>${esc(c.tipo)} · carregando saldos...</span></div></div><div class="account-value"><strong>${formatMoney(c.saldoInicial,c.moeda||"BRL")}</strong><small>Calculando total convertido...</small></div></button>`).join("");
+  atualizarTotaisELista(contas,sequence);
+}
 
 function moedasDaConta(){const principal={codigo:contaSelecionada.moeda||"BRL",saldoInicial:Number(contaSelecionada.saldoInicial||0),principal:true};return [principal,...moedasExtras.filter(m=>m.codigo!==principal.codigo)];}
 function saldoAtual(codigo){const base=moedasDaConta().find(m=>m.codigo===codigo)?.saldoInicial||0;return movimentos.filter(m=>m.moeda===codigo).reduce((s,m)=>s+(m.tipo==="receita"?Number(m.valor||0):-Number(m.valor||0)),base);}
@@ -37,8 +87,8 @@ function renderDetalhes(){if(!contaSelecionada)return;detailsEmpty.classList.add
  detailsTipo.value=contaSelecionada.tipo||"Conta corrente";preencherSelect(detailsMoeda,[contaSelecionada.moeda||"BRL"]);setMoneyValue(detailsSaldoInicial,contaSelecionada.saldoInicial||0);
  const codigos=moedas.map(m=>m.codigo);preencherSelect(adjustmentCurrency,codigos);preencherSelect(adjustmentCurrencyMirror,codigos);atualizarResumoAjuste();}
 
-function abrirDetalhes(id){contaSelecionada=contasAtuais.find(c=>c.id===id)||null;if(!contaSelecionada)return;renderContas(contasAtuais);if(pararMoedas)pararMoedas();if(pararMovimentos)pararMovimentos();pararMoedas=onSnapshot(collection(db,"users",usuarioAtual.uid,"contas",id,"moedas"),s=>{moedasExtras=s.docs.map(d=>({id:d.id,...d.data()}));renderDetalhes();});const q=query(collection(db,"users",usuarioAtual.uid,"contas",id,"movimentacoes"),orderBy("criadoEm","desc"));pararMovimentos=onSnapshot(q,s=>{movimentos=s.docs.map(d=>({id:d.id,...d.data()}));renderDetalhes();});renderDetalhes();}
-function fecharDetalhes(){contaSelecionada=null;moedasExtras=[];movimentos=[];if(pararMoedas)pararMoedas();if(pararMovimentos)pararMovimentos();detailsContent.classList.add("hidden");detailsEmpty.classList.remove("hidden");renderContas(contasAtuais);}
+function abrirDetalhes(id){contaSelecionada=contasAtuais.find(c=>c.id===id)||null;if(!contaSelecionada)return;renderContas(contasAtuais);if(pararMoedas)pararMoedas();if(pararMovimentos)pararMovimentos();pararMoedas=onSnapshot(collection(db,"users",usuarioAtual.uid,"contas",id,"moedas"),s=>{moedasExtras=s.docs.map(d=>({id:d.id,...d.data()}));renderDetalhes();renderContas(contasAtuais);});const q=query(collection(db,"users",usuarioAtual.uid,"contas",id,"movimentacoes"),orderBy("criadoEm","desc"));pararMovimentos=onSnapshot(q,s=>{movimentos=s.docs.map(d=>({id:d.id,...d.data()}));renderDetalhes();renderContas(contasAtuais);});renderDetalhes();}
+function fecharDetalhes(){contaSelecionada=null;moedasExtras=[];movimentos=[];if(pararMoedas)pararMoedas();if(pararMovimentos)pararMovimentos();detailsContent.classList.add("hidden");detailsEmpty.classList.remove("hidden");if(contasAtuais.length)renderContas(contasAtuais);}
 function atualizarResumoAjuste(){if(!contaSelecionada)return;const cod=adjustmentCurrency.value||contaSelecionada.moeda||"BRL";adjustmentCurrencyMirror.innerHTML=`<option value="${cod}">${cod}</option>`;const atual=saldoAtual(cod);adjustmentCalculated.textContent=`Saldo calculado: ${formatMoney(atual,cod)}. Informe abaixo o saldo real atual.`;setMoneyValue(adjustmentRealBalance,atual);}
 
 bancoInput.addEventListener("change",()=>{const livre=bancoInput.value==="outro";nomeLivreGrupo.classList.toggle("hidden",!livre);nomeLivreInput.required=livre;if(!livre)nomeLivreInput.value="";});
