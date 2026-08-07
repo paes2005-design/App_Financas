@@ -6,31 +6,33 @@ const placeholderTitle = document.getElementById("placeholderTitle");
 
 let menuHistoryActive=false;
 
-// Correção específica para o celular: enquanto o menu lateral estiver aberto,
-// os controles flutuantes da Dashboard não podem aparecer por cima dele.
 if(!document.getElementById("mobile-menu-layer-fix")){
   const style=document.createElement("style");
   style.id="mobile-menu-layer-fix";
   style.textContent=`
     @media(max-width:760px){
+      .sidebar{z-index:2147483646!important;isolation:isolate}
+      .sidebar.open + .main-content .dashboard-actions,
       body.mobile-menu-open .dashboard-actions,
       body.mobile-menu-open .dashboard-settings-panel{
         display:none!important;
         visibility:hidden!important;
+        opacity:0!important;
         pointer-events:none!important;
-      }
-      body.mobile-menu-open .sidebar{
-        z-index:1000!important;
       }
     }
   `;
   document.head.appendChild(style);
 }
 
+function syncMenuState(open){
+  document.body.classList.toggle("mobile-menu-open",open);
+}
+
 function openMenu(){
   if(sidebar.classList.contains("open"))return;
   sidebar.classList.add("open");
-  document.body.classList.add("mobile-menu-open");
+  syncMenuState(true);
   if(!menuHistoryActive){
     history.pushState({appOverlay:"sidebar"},"");
     menuHistoryActive=true;
@@ -39,11 +41,11 @@ function openMenu(){
 
 function closeMenu({fromHistory=false}={}){
   if(!sidebar.classList.contains("open")){
-    document.body.classList.remove("mobile-menu-open");
+    syncMenuState(false);
     return;
   }
   sidebar.classList.remove("open");
-  document.body.classList.remove("mobile-menu-open");
+  syncMenuState(false);
   if(fromHistory){menuHistoryActive=false;return;}
   if(menuHistoryActive)history.back();
 }
