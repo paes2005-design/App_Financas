@@ -6,9 +6,31 @@ const placeholderTitle = document.getElementById("placeholderTitle");
 
 let menuHistoryActive=false;
 
+// Correção específica para o celular: enquanto o menu lateral estiver aberto,
+// os controles flutuantes da Dashboard não podem aparecer por cima dele.
+if(!document.getElementById("mobile-menu-layer-fix")){
+  const style=document.createElement("style");
+  style.id="mobile-menu-layer-fix";
+  style.textContent=`
+    @media(max-width:760px){
+      body.mobile-menu-open .dashboard-actions,
+      body.mobile-menu-open .dashboard-settings-panel{
+        display:none!important;
+        visibility:hidden!important;
+        pointer-events:none!important;
+      }
+      body.mobile-menu-open .sidebar{
+        z-index:1000!important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function openMenu(){
   if(sidebar.classList.contains("open"))return;
   sidebar.classList.add("open");
+  document.body.classList.add("mobile-menu-open");
   if(!menuHistoryActive){
     history.pushState({appOverlay:"sidebar"},"");
     menuHistoryActive=true;
@@ -16,8 +38,12 @@ function openMenu(){
 }
 
 function closeMenu({fromHistory=false}={}){
-  if(!sidebar.classList.contains("open"))return;
+  if(!sidebar.classList.contains("open")){
+    document.body.classList.remove("mobile-menu-open");
+    return;
+  }
   sidebar.classList.remove("open");
+  document.body.classList.remove("mobile-menu-open");
   if(fromHistory){menuHistoryActive=false;return;}
   if(menuHistoryActive)history.back();
 }
