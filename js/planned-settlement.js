@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase.js";
 import { formatMoney } from "./money.js";
-import { addDoc, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 let user=null,receitas=[],despesas=[],transferencias=[],stops=[];
@@ -16,9 +16,9 @@ style.textContent=`.settlement-modal{position:fixed;inset:0;z-index:9500;display
 document.head.appendChild(style);
 
 function labels(kind){
- if(kind==="receita")return{title:"Efetivar receita",date:"Data do recebimento",value:"Valor recebido",verb:"o recebimento"};
- if(kind==="despesa")return{title:"Efetivar despesa",date:"Data do pagamento",value:"Valor pago",verb:"o pagamento"};
- return{title:"Efetivar transferência",date:"Data da transferência",value:"Valor transferido",verb:"a transferência"};
+ if(kind==="receita")return{title:"Efetivar receita",date:"Data do recebimento",value:"Valor recebido",verb:"o recebimento",undo:"o recebimento"};
+ if(kind==="despesa")return{title:"Efetivar despesa",date:"Data do pagamento",value:"Valor pago",verb:"o pagamento",undo:"o pagamento"};
+ return{title:"Efetivar transferência",date:"Data da transferência",value:"Valor transferido",verb:"a transferência",undo:"a transferência"};
 }
 
 function modal(kind,record){
@@ -56,15 +56,35 @@ async function settle(kind,record,data,valor){
  await updateDoc(doc(db,"users",user.uid,"transferencias",record.id),{planejada:false,efetivada:true,dataEfetivacao:data,valorPrevisto:Number(record.valor||0),valorEfetivado:valor,valor,movSaida:out.id,movEntrada:inn.id,atualizadoEm:serverTimestamp()});
 }
 
+async function unsettle(kind,record){
+ if(!isDone(record))return;
+ const original=Number(record.valorPrevisto??record.valor??0);
+ if(kind==="receita"||kind==="despesa"){
+  if(record.movimentacaoId&&record.contaId&&!record.semMovimentoConta&&!record.formaPagamento&&!record.cartaoId){
+   await deleteDoc(doc(db,"users",user.uid,"contas",record.contaId,"movimentacoes",record.movimentacaoId));
+  }
+  await updateDoc(doc(db,"users",user.uid,kind==="receita"?"receitas":"despesas",record.id),{planejada:true,efetivada:false,dataEfetivacao:null,valorEfetivado:null,valor:original,movimentacaoId:null,atualizadoEm:serverTimestamp()});
+  return;
+ }
+ if(record.movSaida&&record.origemId)await deleteDoc(doc(db,"users",user.uid,"contas",record.origemId,"movimentacoes",record.movSaida));
+ if(record.movEntrada&&record.destinoId)await deleteDoc(doc(db,"users",user.uid,"contas",record.destinoId,"movimentacoes",record.movEntrada));
+ await updateDoc(doc(db,"users",user.uid,"transferencias",record.id),{planejada:true,efetivada:false,dataEfetivacao:null,valorEfetivado:null,valor:original,movSaida:null,movEntrada:null,atualizadoEm:serverTimestamp()});
+}
+
 document.addEventListener("click",async event=>{
  const btn=event.target.closest(".settle-revenue,.settle-expense,.settle-transfer");
  if(!btn||!user)return;
  event.preventDefault();event.stopPropagation();
  const kind=btn.classList.contains("settle-revenue")?"receita":btn.classList.contains("settle-expense")?"despesa":"transferencia";
  const record=records(kind).find(r=>r.id===btn.dataset.id);
- if(!record||isDone(record))return;
- const result=await modal(kind,record);if(!result)return;
+ if(!record)return;
  const l=labels(kind);
+ if(isDone(record)){
+  if(!confirm(`Deseja desefetivar ${l.undo}? O valor realizado será removido e a operação voltará para Pendente.`))return;
+  try{await unsettle(kind,record);}catch(error){console.error(error);alert("Não foi possível desefetivar a operação.");}
+  return;
+ }
+ const result=await modal(kind,record);if(!result)return;
  if(!confirm(`Confirma ${l.verb} de ${formatMoney(result.valor,record.moeda||"BRL")} em ${new Date(`${result.data}T12:00:00`).toLocaleDateString("pt-BR")}?`))return;
  try{await settle(kind,record,result.data,result.valor);}catch(error){console.error(error);alert("Não foi possível efetivar a operação.");}
 });
