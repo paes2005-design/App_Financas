@@ -3,6 +3,13 @@ import "./auth.js";
 import "./money.js";
 import "./contas.js";
 
+if (!document.querySelector('link[href$="money.css"]')) {
+  const moneyStyles = document.createElement("link");
+  moneyStyles.rel = "stylesheet";
+  moneyStyles.href = "./css/money.css";
+  document.head.appendChild(moneyStyles);
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
