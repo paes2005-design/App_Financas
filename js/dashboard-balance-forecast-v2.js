@@ -13,7 +13,8 @@ addMini(saldoTotal,"dashboardBalanceMini","Inicial do mês","Previsão do mês")
 const monthKey=d=>String(d).slice(0,7);
 function timestampDate(v){if(!v)return null;if(typeof v.toDate==="function")return v.toDate();if(typeof v.seconds==="number")return new Date(v.seconds*1000);const d=new Date(v);return Number.isNaN(d.getTime())?null:d;}
 function accountStartMonth(acc){const d=timestampDate(acc.criadoEm||acc.createdAt||acc.dataCriacao);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:monthKey(new Date().toISOString());}
-function settled(rows){return rows.filter(r=>r.efetivada===true||Boolean(r.dataEfetivacao)||Boolean(r.movimentacaoId)||Boolean(r.movSaida)||Boolean(r.movEntrada));}
+function isCardCharge(r){return r?.formaPagamento==="cartao"||Boolean(r?.cartaoId);}
+function settled(rows){return rows.filter(r=>!isCardCharge(r)&&(r.efetivada===true||Boolean(r.dataEfetivacao)||Boolean(r.movimentacaoId)||Boolean(r.movSaida)||Boolean(r.movEntrada)));}
 async function convertRows(rows){if(!rows.length)return 0;return (await convertAccountsToBRL(rows.map(r=>({moeda:r.moeda||"BRL",saldoInicial:Number(r.valor||0)})))).total;}
 async function accountInfo(){const p=getPeriod("dashboard"),selected=monthKey(p.start),snap=await getDocs(collection(db,"users",user.uid,"contas")),starts=new Map();let earliest=null;snap.docs.forEach(d=>{const a={id:d.id,...d.data()},m=accountStartMonth(a);starts.set(a.id,`${m}-01`);if(!earliest||m<earliest)earliest=m;});return{selected,earliest,start:earliest?`${earliest}-01`:p.start,before:Boolean(earliest&&selected<earliest),starts,docs:snap.docs};}
 function valid(row,info){const start=row.contaId?info.starts.get(row.contaId):info.start;return !start||!row.data||row.data>=start;}
