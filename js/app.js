@@ -6,6 +6,7 @@ import "./receitas-summary.js";
 import "./despesas.js";
 import "./transferencias.js";
 import "./cartoes.js";
+import "./account-form-sync.js";
 import "./transaction-actions.js";
 import "./quick-settlement.js";
 import "./planned-edit-guard.js";
