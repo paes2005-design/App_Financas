@@ -11,8 +11,26 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
+const BANCOS = {
+  bb: { nome: "Banco do Brasil", simbolo: "BB", cor: "#f8d117", segmento: "S1" },
+  bradesco: { nome: "Bradesco", simbolo: "BRA", cor: "#cc092f", segmento: "S1" },
+  btg: { nome: "BTG Pactual", simbolo: "BTG", cor: "#123c69", segmento: "S1" },
+  caixa: { nome: "Caixa Econômica Federal", simbolo: "CEF", cor: "#005ca9", segmento: "S1" },
+  itau: { nome: "Itaú", simbolo: "IT", cor: "#ec7000", segmento: "S1" },
+  santander: { nome: "Santander", simbolo: "SAN", cor: "#ec0000", segmento: "S1" },
+  banrisul: { nome: "Banrisul", simbolo: "BRS", cor: "#00529b", segmento: "S2" },
+  bnb: { nome: "Banco do Nordeste", simbolo: "BNB", cor: "#00529b", segmento: "S2" },
+  bndes: { nome: "BNDES", simbolo: "BND", cor: "#16834b", segmento: "S2" },
+  citi: { nome: "Citibank", simbolo: "CITI", cor: "#056dae", segmento: "S2" },
+  "credit-suisse": { nome: "Credit Suisse", simbolo: "CS", cor: "#17365d", segmento: "S2" },
+  safra: { nome: "Banco Safra", simbolo: "SAF", cor: "#b69324", segmento: "S2" },
+  bv: { nome: "Banco BV", simbolo: "BV", cor: "#2446f5", segmento: "S2" }
+};
+
 const form = document.getElementById("contaForm");
-const nomeInput = document.getElementById("contaNome");
+const bancoInput = document.getElementById("contaBanco");
+const nomeLivreGrupo = document.getElementById("contaNomeLivreGrupo");
+const nomeLivreInput = document.getElementById("contaNomeLivre");
 const tipoInput = document.getElementById("contaTipo");
 const saldoInput = document.getElementById("contaSaldoInicial");
 const lista = document.getElementById("listaContas");
@@ -32,6 +50,34 @@ function mostrarMensagem(texto = "", tipo = "") {
   mensagem.className = `message ${tipo}`.trim();
 }
 
+function escapeHtml(valor = "") {
+  return String(valor).replace(/[&<>'"]/g, (caractere) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  })[caractere]);
+}
+
+function obterDadosInstituicao() {
+  const chave = bancoInput.value;
+
+  if (chave === "outro") {
+    const nome = nomeLivreInput.value.trim();
+    return {
+      chave: "outro",
+      nome,
+      simbolo: nome ? nome.slice(0, 3).toUpperCase() : "OUT",
+      cor: "#607d8b",
+      segmento: "Livre"
+    };
+  }
+
+  const banco = BANCOS[chave];
+  return banco ? { chave, ...banco } : null;
+}
+
 function renderizarContas(contas) {
   const total = contas.reduce((soma, conta) => soma + Number(conta.saldoInicial || 0), 0);
   saldoTotal.textContent = formatarMoeda(total);
@@ -43,9 +89,12 @@ function renderizarContas(contas) {
 
   lista.innerHTML = contas.map((conta) => `
     <article class="account-item">
-      <div>
-        <strong>${escapeHtml(conta.nome)}</strong>
-        <span>${escapeHtml(conta.tipo)}</span>
+      <div class="account-main">
+        <span class="bank-symbol" style="--bank-color:${escapeHtml(conta.cor || "#607d8b")}">${escapeHtml(conta.simbolo || "CTA")}</span>
+        <div>
+          <strong>${escapeHtml(conta.nome)}</strong>
+          <span>${escapeHtml(conta.tipo)}${conta.segmento ? ` · ${escapeHtml(conta.segmento)}` : ""}</span>
+        </div>
       </div>
       <div class="account-value">
         <strong>${formatarMoeda(conta.saldoInicial)}</strong>
@@ -67,15 +116,12 @@ function renderizarContas(contas) {
   });
 }
 
-function escapeHtml(valor = "") {
-  return String(valor).replace(/[&<>'"]/g, (caractere) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-    '"': "&quot;"
-  })[caractere]);
-}
+bancoInput.addEventListener("change", () => {
+  const livre = bancoInput.value === "outro";
+  nomeLivreGrupo.classList.toggle("hidden", !livre);
+  nomeLivreInput.required = livre;
+  if (!livre) nomeLivreInput.value = "";
+});
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -86,11 +132,16 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
-  const nome = nomeInput.value.trim();
+  const instituicao = obterDadosInstituicao();
   const tipo = tipoInput.value;
   const saldoInicial = Number(saldoInput.value.replace(",", "."));
 
-  if (!nome) {
+  if (!instituicao) {
+    mostrarMensagem("Selecione um banco ou a opção de nome livre.", "error");
+    return;
+  }
+
+  if (!instituicao.nome) {
     mostrarMensagem("Informe o nome da conta.", "error");
     return;
   }
@@ -102,7 +153,11 @@ form.addEventListener("submit", async (event) => {
 
   try {
     await addDoc(collection(db, "users", usuarioAtual.uid, "contas"), {
-      nome,
+      bancoId: instituicao.chave,
+      nome: instituicao.nome,
+      simbolo: instituicao.simbolo,
+      cor: instituicao.cor,
+      segmento: instituicao.segmento,
       tipo,
       saldoInicial,
       ativa: true,
@@ -111,6 +166,8 @@ form.addEventListener("submit", async (event) => {
     });
 
     form.reset();
+    nomeLivreGrupo.classList.add("hidden");
+    nomeLivreInput.required = false;
     saldoInput.value = "0";
     mostrarMensagem("Conta cadastrada com sucesso.", "success");
   } catch (error) {
