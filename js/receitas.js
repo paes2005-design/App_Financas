@@ -1,300 +1,34 @@
 import { auth, db } from "./firebase.js";
 import { formatMoney, getMoneyValue, resetMoneyField, setMoneyValue } from "./money.js";
-import {
-  addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query,
-  serverTimestamp, updateDoc
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { getCategoriesFor } from "./categorias.js";
+import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 const content=document.getElementById("content");
 const view=document.createElement("div");
-view.id="receitas";
-view.className="app-view hidden";
-view.innerHTML=`
-  <div class="page-grid revenue-layout">
-    <article class="panel">
-      <h3 id="receitaFormTitulo">Nova receita</h3>
-      <form id="receitaForm" class="account-form">
-        <label for="receitaConta">Conta de destino</label>
-        <select id="receitaConta" required></select>
-
-        <label for="receitaTipo">Tipo de receita</label>
-        <select id="receitaTipo"></select>
-
-        <label for="receitaDescricao">Descrição</label>
-        <input id="receitaDescricao" maxlength="80" placeholder="Ex.: Salário de agosto" required>
-
-        <label for="receitaData">Data</label>
-        <input id="receitaData" type="date" required>
-
-        <label for="receitaValor">Valor</label>
-        <div class="money-field" data-money-field>
-          <div class="money-input-row">
-            <select id="receitaMoeda" data-money-currency></select>
-            <input id="receitaValor" data-money-input type="text" inputmode="decimal" value="0,00">
-            <button type="button" class="calculator-toggle" data-money-calculator>🧮</button>
-          </div>
-        </div>
-
-        <button id="salvarReceita" class="primary form-button" type="submit">Salvar receita</button>
-        <button id="cancelarEdicaoReceita" class="secondary form-button hidden" type="button">Cancelar edição</button>
-        <p id="receitaMensagem" class="message"></p>
-      </form>
-    </article>
-
-    <article class="panel">
-      <div class="panel-heading"><div><h3>Receitas</h3><small id="totalReceitasFiltradas"></small></div></div>
-      <div class="filter-grid">
-        <select id="filtroReceitaConta"></select>
-        <select id="filtroReceitaTipo"></select>
-        <input id="filtroReceitaInicio" type="date" aria-label="Data inicial">
-        <input id="filtroReceitaFim" type="date" aria-label="Data final">
-      </div>
-      <div id="listaReceitas"><div class="empty-state">Nenhuma receita cadastrada.</div></div>
-    </article>
-  </div>`;
+view.id="receitas";view.className="app-view hidden";
+view.innerHTML=`<div class="page-grid revenue-layout"><article class="panel"><h3 id="receitaFormTitulo">Nova receita</h3><form id="receitaForm" class="account-form"><label for="receitaConta">Conta de destino</label><select id="receitaConta" required></select><div class="field-with-action"><div><label for="receitaCategoria">Categoria</label><select id="receitaCategoria" required></select></div><button id="addReceitaCategoria" type="button" class="small-action">+ Categoria</button></div><label for="receitaSubcategoria">Subcategoria</label><select id="receitaSubcategoria"><option value="">Sem subcategoria</option></select><label for="receitaDescricao">Descrição</label><input id="receitaDescricao" maxlength="80" placeholder="Ex.: Salário de agosto" required><label for="receitaData">Data</label><input id="receitaData" type="date" required><label for="receitaValor">Valor</label><div class="money-field" data-money-field><div class="money-input-row"><select id="receitaMoeda" data-money-currency></select><input id="receitaValor" data-money-input type="text" inputmode="decimal" value="0,00"><button type="button" class="calculator-toggle" data-money-calculator>🧮</button></div></div><button id="salvarReceita" class="primary form-button" type="submit">Salvar receita</button><button id="cancelarEdicaoReceita" class="secondary form-button hidden" type="button">Cancelar edição</button><p id="receitaMensagem" class="message"></p></form></article><article class="panel"><div class="panel-heading"><div><h3>Receitas</h3><small id="totalReceitasFiltradas"></small></div></div><div class="filter-grid"><select id="filtroReceitaConta"></select><select id="filtroReceitaCategoria"></select><input id="filtroReceitaInicio" type="date" aria-label="Data inicial"><input id="filtroReceitaFim" type="date" aria-label="Data final"></div><div id="listaReceitas"><div class="empty-state">Nenhuma receita cadastrada.</div></div></article></div>`;
 content.insertBefore(view,document.getElementById("placeholderView"));
+const style=document.createElement("style");style.textContent=`.revenue-layout{grid-template-columns:minmax(300px,380px) minmax(0,1fr)}.filter-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;margin-bottom:14px}.filter-grid>*{padding:10px;border:1px solid var(--border);border-radius:9px;background:white}.field-with-action{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}.small-action{height:44px;padding:0 10px;border:1px solid var(--primary);border-radius:9px;background:white;color:var(--primary);font-weight:700}.transaction-item{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}.transaction-item span{display:block;margin-top:4px;color:var(--muted);font-size:.88rem}.transaction-value{text-align:right}.transaction-value strong{color:var(--secondary)}.transaction-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}.transaction-actions button{border:0;background:transparent;font-size:.86rem}.edit-revenue{color:var(--primary)}.delete-revenue{color:var(--danger)}@media(max-width:980px){.revenue-layout{grid-template-columns:1fr}.filter-grid{grid-template-columns:1fr 1fr}}@media(max-width:520px){.filter-grid{grid-template-columns:1fr}.transaction-item{align-items:flex-start}}`;document.head.appendChild(style);
 
-const style=document.createElement("style");
-style.textContent=`
-.revenue-layout{grid-template-columns:minmax(300px,380px) minmax(0,1fr)}
-.filter-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px;margin-bottom:14px}
-.filter-grid>*{padding:10px;border:1px solid var(--border);border-radius:9px;background:white}
-.transaction-item{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
-.transaction-item span{display:block;margin-top:4px;color:var(--muted);font-size:.88rem}
-.transaction-value{text-align:right}
-.transaction-value strong{color:var(--secondary)}
-.transaction-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
-.transaction-actions button{border:0;background:transparent;font-size:.86rem}
-.edit-revenue{color:var(--primary)}
-.delete-revenue{color:var(--danger)}
-@media(max-width:980px){.revenue-layout{grid-template-columns:1fr}.filter-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:520px){.filter-grid{grid-template-columns:1fr}.transaction-item{align-items:flex-start}}
-`;
-document.head.appendChild(style);
-
-const $=(id)=>document.getElementById(id);
-const form=$("receitaForm"), formTitulo=$("receitaFormTitulo"), salvarButton=$("salvarReceita"), cancelarButton=$("cancelarEdicaoReceita");
-const contaSelect=$("receitaConta"), moedaSelect=$("receitaMoeda"), valorInput=$("receitaValor"), mensagem=$("receitaMensagem"), lista=$("listaReceitas");
-const filtroConta=$("filtroReceitaConta"), filtroInicio=$("filtroReceitaInicio"), filtroFim=$("filtroReceitaFim"), filtroTipo=$("filtroReceitaTipo"), total=$("totalReceitasFiltradas");
-
-let usuario=null;
-let pararReceitas=null;
-let contas=[];
-let receitas=[];
-let receitaEmEdicao=null;
-
-const tipos=["Salário","Freelance","Vendas","Rendimentos","Aluguel recebido","Reembolso","Presente","Outros"];
-
-function esc(v=""){
-  return String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]);
-}
-
-function msg(texto="",tipo=""){
-  mensagem.textContent=texto;
-  mensagem.className=`message ${tipo}`.trim();
-}
-
-function dateParts(data){
-  const d=new Date(`${data}T12:00:00`),mes=d.getMonth()+1;
-  return {ano:d.getFullYear(),mes,trimestre:Math.ceil(mes/3),semestre:mes<=6?1:2,dataChave:data};
-}
-
-function hoje(){
-  return new Date().toISOString().slice(0,10);
-}
-
-async function moedasDaConta(conta){
-  const extras=await getDocs(collection(db,"users",usuario.uid,"contas",conta.id,"moedas"));
-  return [...new Set([conta.moeda||"BRL",...extras.docs.map(d=>d.data().codigo)])];
-}
-
-async function atualizarMoedas(moedaPreferida=""){
-  const conta=contas.find(c=>c.id===contaSelect.value);
-  if(!conta){
-    moedaSelect.innerHTML="";
-    return;
-  }
-
-  const moedas=await moedasDaConta(conta);
-  moedaSelect.innerHTML=moedas.map(m=>`<option value="${m}">${m}</option>`).join("");
-  moedaSelect.value=moedas.includes(moedaPreferida)?moedaPreferida:moedas[0];
-}
-
-function renderFiltros(){
-  const options=contas.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join("");
-  contaSelect.innerHTML=`<option value="">Selecione...</option>${options}`;
-  filtroConta.innerHTML=`<option value="">Todas as contas</option>${options}`;
-  $("receitaTipo").innerHTML=tipos.map(t=>`<option value="${t}">${t}</option>`).join("");
-  filtroTipo.innerHTML=`<option value="">Todos os tipos</option>${tipos.map(t=>`<option value="${t}">${t}</option>`).join("")}`;
-}
-
-function filtradas(){
-  return receitas.filter(r=>(!filtroConta.value||r.contaId===filtroConta.value)
-    &&(!filtroTipo.value||r.tipoReceita===filtroTipo.value)
-    &&(!filtroInicio.value||r.data>=filtroInicio.value)
-    &&(!filtroFim.value||r.data<=filtroFim.value));
-}
-
-function render(){
-  const rows=filtradas();
-  const soma=rows.filter(r=>(r.moeda||"BRL")==="BRL").reduce((s,r)=>s+Number(r.valor||0),0);
-  total.textContent=`Total em BRL: ${formatMoney(soma,"BRL")}`;
-
-  lista.innerHTML=rows.length?rows.map(r=>`
-    <article class="transaction-item">
-      <div>
-        <strong>${esc(r.descricao)}</strong>
-        <span>${esc(r.tipoReceita)} · ${esc(r.contaNome)} · ${esc(r.data)}</span>
-      </div>
-      <div class="transaction-value">
-        <strong>+${formatMoney(r.valor,r.moeda||"BRL")}</strong>
-        <div class="transaction-actions">
-          <button type="button" class="edit-revenue" data-id="${r.id}">Editar</button>
-          <button type="button" class="delete-revenue" data-id="${r.id}" data-account="${r.contaId}" data-movement="${r.movimentacaoId||""}">Excluir</button>
-        </div>
-      </div>
-    </article>`).join(""):'<div class="empty-state">Nenhuma receita encontrada.</div>';
-}
-
-function resetarFormulario(){
-  receitaEmEdicao=null;
-  form.reset();
-  formTitulo.textContent="Nova receita";
-  salvarButton.textContent="Salvar receita";
-  cancelarButton.classList.add("hidden");
-  $("receitaData").value=hoje();
-  contaSelect.value="";
-  moedaSelect.innerHTML="";
-  resetMoneyField(valorInput,"BRL");
-  msg();
-}
-
-async function iniciarEdicao(id){
-  const receita=receitas.find(item=>item.id===id);
-  if(!receita)return;
-
-  receitaEmEdicao=receita;
-  formTitulo.textContent="Editar receita";
-  salvarButton.textContent="Salvar alterações";
-  cancelarButton.classList.remove("hidden");
-
-  contaSelect.value=receita.contaId;
-  await atualizarMoedas(receita.moeda||"BRL");
-  $("receitaTipo").value=receita.tipoReceita||"Outros";
-  $("receitaDescricao").value=receita.descricao||"";
-  $("receitaData").value=receita.data||hoje();
-  setMoneyValue(valorInput,Number(receita.valor||0));
-  msg("Editando receita. Altere os dados e salve.","success");
-  form.scrollIntoView({behavior:"smooth",block:"start"});
-}
-
-contaSelect.addEventListener("change",()=>atualizarMoedas());
-[filtroConta,filtroInicio,filtroFim,filtroTipo].forEach(el=>el.addEventListener("change",render));
-cancelarButton.addEventListener("click",resetarFormulario);
-
-lista.addEventListener("click",async e=>{
-  const editar=e.target.closest(".edit-revenue");
-  if(editar){
-    await iniciarEdicao(editar.dataset.id);
-    return;
-  }
-
-  const excluir=e.target.closest(".delete-revenue");
-  if(!excluir||!confirm("Excluir esta receita?"))return;
-
-  await deleteDoc(doc(db,"users",usuario.uid,"receitas",excluir.dataset.id));
-  if(excluir.dataset.movement){
-    await deleteDoc(doc(db,"users",usuario.uid,"contas",excluir.dataset.account,"movimentacoes",excluir.dataset.movement));
-  }
-  if(receitaEmEdicao?.id===excluir.dataset.id)resetarFormulario();
-});
-
-form.addEventListener("submit",async e=>{
-  e.preventDefault();
-  msg();
-
-  const conta=contas.find(c=>c.id===contaSelect.value);
-  const valor=getMoneyValue(valorInput);
-  const data=$("receitaData").value;
-  const descricao=$("receitaDescricao").value.trim();
-  const tipoReceita=$("receitaTipo").value;
-  const moeda=moedaSelect.value;
-
-  if(!conta)return msg("Selecione uma conta.","error");
-  if(!descricao)return msg("Informe a descrição.","error");
-  if(!data)return msg("Informe a data.","error");
-  if(!moeda)return msg("Selecione a moeda.","error");
-  if(!Number.isFinite(valor)||valor<=0)return msg("Informe um valor maior que zero.","error");
-
-  const periodo=dateParts(data);
-  const dadosMovimento={tipo:"receita",categoria:tipoReceita,descricao,valor,moeda,data,...periodo,origem:"receitas",atualizadoEm:serverTimestamp()};
-  const dadosReceita={contaId:conta.id,contaNome:conta.nome,tipoReceita,descricao,valor,moeda,data,...periodo,atualizadoEm:serverTimestamp()};
-
-  try{
-    if(receitaEmEdicao){
-      let movimentacaoId=receitaEmEdicao.movimentacaoId||"";
-
-      if(receitaEmEdicao.contaId!==conta.id){
-        if(movimentacaoId){
-          await deleteDoc(doc(db,"users",usuario.uid,"contas",receitaEmEdicao.contaId,"movimentacoes",movimentacaoId));
-        }
-        const novoMovimento=await addDoc(collection(db,"users",usuario.uid,"contas",conta.id,"movimentacoes"),{
-          ...dadosMovimento,
-          criadoEm:serverTimestamp()
-        });
-        movimentacaoId=novoMovimento.id;
-      }else if(movimentacaoId){
-        await updateDoc(doc(db,"users",usuario.uid,"contas",conta.id,"movimentacoes",movimentacaoId),dadosMovimento);
-      }else{
-        const novoMovimento=await addDoc(collection(db,"users",usuario.uid,"contas",conta.id,"movimentacoes"),{
-          ...dadosMovimento,
-          criadoEm:serverTimestamp()
-        });
-        movimentacaoId=novoMovimento.id;
-      }
-
-      await updateDoc(doc(db,"users",usuario.uid,"receitas",receitaEmEdicao.id),{
-        ...dadosReceita,
-        movimentacaoId
-      });
-      resetarFormulario();
-      msg("Receita atualizada e saldo da conta recalculado.","success");
-    }else{
-      const mov=await addDoc(collection(db,"users",usuario.uid,"contas",conta.id,"movimentacoes"),{
-        ...dadosMovimento,
-        criadoEm:serverTimestamp()
-      });
-      await addDoc(collection(db,"users",usuario.uid,"receitas"),{
-        ...dadosReceita,
-        movimentacaoId:mov.id,
-        criadoEm:serverTimestamp()
-      });
-      resetarFormulario();
-      msg("Receita cadastrada e adicionada ao saldo da conta.","success");
-    }
-  }catch(err){
-    msg(receitaEmEdicao?"Não foi possível atualizar a receita.":"Não foi possível cadastrar a receita.","error");
-    console.error(err);
-  }
-});
-
-onAuthStateChanged(auth,async user=>{
-  usuario=user;
-  if(pararReceitas)pararReceitas();
-  if(!user)return;
-
-  const snap=await getDocs(collection(db,"users",user.uid,"contas"));
-  contas=snap.docs.map(d=>({id:d.id,...d.data()}));
-  renderFiltros();
-  $("receitaData").value=hoje();
-
-  pararReceitas=onSnapshot(query(collection(db,"users",user.uid,"receitas"),orderBy("data","desc")),s=>{
-    receitas=s.docs.map(d=>({id:d.id,...d.data()}));
-    if(receitaEmEdicao){
-      receitaEmEdicao=receitas.find(r=>r.id===receitaEmEdicao.id)||null;
-      if(!receitaEmEdicao)resetarFormulario();
-    }
-    render();
-  });
-});
+const $=id=>document.getElementById(id);
+const form=$("receitaForm"),formTitle=$("receitaFormTitulo"),saveBtn=$("salvarReceita"),cancelBtn=$("cancelarEdicaoReceita"),account=$("receitaConta"),category=$("receitaCategoria"),subcategory=$("receitaSubcategoria"),currency=$("receitaMoeda"),valueInput=$("receitaValor"),message=$("receitaMensagem"),list=$("listaReceitas"),filterAccount=$("filtroReceitaConta"),filterCategory=$("filtroReceitaCategoria"),filterStart=$("filtroReceitaInicio"),filterEnd=$("filtroReceitaFim"),total=$("totalReceitasFiltradas");
+let user=null,stop=null,accounts=[],revenues=[],editing=null;
+function esc(v=""){return String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]);}
+function msg(text="",type=""){message.textContent=text;message.className=`message ${type}`.trim();}
+function today(){return new Date().toISOString().slice(0,10);}
+function period(data){const d=new Date(`${data}T12:00:00`),mes=d.getMonth()+1;return{ano:d.getFullYear(),mes,trimestre:Math.ceil(mes/3),semestre:mes<=6?1:2,dataChave:data};}
+async function accountCurrencies(item){const snap=await getDocs(collection(db,"users",user.uid,"contas",item.id,"moedas"));return [...new Set([item.moeda||"BRL",...snap.docs.map(d=>d.data().codigo)])];}
+async function updateCurrencies(preferred=""){const item=accounts.find(a=>a.id===account.value);if(!item){currency.innerHTML="";return;}const values=await accountCurrencies(item);currency.innerHTML=values.map(v=>`<option value="${v}">${v}</option>`).join("");currency.value=values.includes(preferred)?preferred:values[0];}
+function categories(){return getCategoriesFor("receita");}
+function renderCategories(preferredCategory="",preferredSub=""){const values=categories();category.innerHTML=`<option value="">Selecione...</option>${values.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join("")}`;filterCategory.innerHTML=`<option value="">Todas as categorias</option>${values.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join("")}`;if(preferredCategory)category.value=preferredCategory;renderSubcategories(preferredSub);}
+function renderSubcategories(preferred=""){const selected=categories().find(c=>c.id===category.value);const values=selected?.subcategorias||[];subcategory.innerHTML=`<option value="">Sem subcategoria</option>${values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("")}`;if(values.includes(preferred))subcategory.value=preferred;}
+function renderAccounts(){const options=accounts.map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join("");account.innerHTML=`<option value="">Selecione...</option>${options}`;filterAccount.innerHTML=`<option value="">Todas as contas</option>${options}`;}
+function filtered(){return revenues.filter(r=>(!filterAccount.value||r.contaId===filterAccount.value)&&(!filterCategory.value||r.categoriaId===filterCategory.value)&&(!filterStart.value||r.data>=filterStart.value)&&(!filterEnd.value||r.data<=filterEnd.value));}
+function render(){const rows=filtered();const sum=rows.filter(r=>(r.moeda||"BRL")==="BRL").reduce((s,r)=>s+Number(r.valor||0),0);total.textContent=`Total em BRL: ${formatMoney(sum,"BRL")}`;list.innerHTML=rows.length?rows.map(r=>`<article class="transaction-item"><div><strong>${esc(r.descricao)}</strong><span>${esc(r.categoriaNome||"Sem categoria")}${r.subcategoria?` › ${esc(r.subcategoria)}`:""} · ${esc(r.contaNome)} · ${esc(r.data)}</span></div><div class="transaction-value"><strong>+${formatMoney(r.valor,r.moeda||"BRL")}</strong><div class="transaction-actions"><button type="button" class="edit-revenue" data-id="${r.id}">Editar</button><button type="button" class="delete-revenue" data-id="${r.id}" data-account="${r.contaId}" data-movement="${r.movimentacaoId||""}">Excluir</button></div></div></article>`).join(""):'<div class="empty-state">Nenhuma receita encontrada.</div>';}
+function reset(){editing=null;form.reset();formTitle.textContent="Nova receita";saveBtn.textContent="Salvar receita";cancelBtn.classList.add("hidden");$("receitaData").value=today();account.value="";currency.innerHTML="";renderCategories();resetMoneyField(valueInput,"BRL");msg();}
+async function edit(id){const r=revenues.find(x=>x.id===id);if(!r)return;editing=r;formTitle.textContent="Editar receita";saveBtn.textContent="Salvar alterações";cancelBtn.classList.remove("hidden");account.value=r.contaId;await updateCurrencies(r.moeda||"BRL");renderCategories(r.categoriaId||"",r.subcategoria||"");$("receitaDescricao").value=r.descricao||"";$("receitaData").value=r.data||today();setMoneyValue(valueInput,Number(r.valor||0));msg("Editando receita.","success");form.scrollIntoView({behavior:"smooth",block:"start"});}
+account.addEventListener("change",()=>updateCurrencies());category.addEventListener("change",()=>renderSubcategories());$("addReceitaCategoria").addEventListener("click",()=>window.dispatchEvent(new CustomEvent("open-category-manager",{detail:{operacao:"receita"}})));window.addEventListener("categories-updated",()=>{const c=category.value,s=subcategory.value;renderCategories(c,s);render();});[filterAccount,filterCategory,filterStart,filterEnd].forEach(el=>el.addEventListener("change",render));cancelBtn.addEventListener("click",reset);
+list.addEventListener("click",async e=>{const editBtn=e.target.closest(".edit-revenue"),deleteBtn=e.target.closest(".delete-revenue");if(editBtn)return edit(editBtn.dataset.id);if(!deleteBtn||!confirm("Excluir esta receita?"))return;await deleteDoc(doc(db,"users",user.uid,"receitas",deleteBtn.dataset.id));if(deleteBtn.dataset.movement)await deleteDoc(doc(db,"users",user.uid,"contas",deleteBtn.dataset.account,"movimentacoes",deleteBtn.dataset.movement));if(editing?.id===deleteBtn.dataset.id)reset();});
+form.addEventListener("submit",async e=>{e.preventDefault();msg();const acc=accounts.find(a=>a.id===account.value),cat=categories().find(c=>c.id===category.value),valor=getMoneyValue(valueInput),data=$("receitaData").value,descricao=$("receitaDescricao").value.trim(),moeda=currency.value,sub=subcategory.value;if(!acc)return msg("Selecione uma conta.","error");if(!cat)return msg("Selecione uma categoria.","error");if(!descricao||!data||!moeda)return msg("Preencha os campos obrigatórios.","error");if(!Number.isFinite(valor)||valor<=0)return msg("Informe um valor maior que zero.","error");const p=period(data),movement={tipo:"receita",categoriaId:cat.id,categoriaNome:cat.nome,subcategoria:sub,descricao,valor,moeda,data,...p,origem:"receitas",atualizadoEm:serverTimestamp()},record={contaId:acc.id,contaNome:acc.nome,categoriaId:cat.id,categoriaNome:cat.nome,subcategoria:sub,descricao,valor,moeda,data,...p,atualizadoEm:serverTimestamp()};try{if(editing){let movementId=editing.movimentacaoId||"";if(editing.contaId!==acc.id){if(movementId)await deleteDoc(doc(db,"users",user.uid,"contas",editing.contaId,"movimentacoes",movementId));const created=await addDoc(collection(db,"users",user.uid,"contas",acc.id,"movimentacoes"),{...movement,criadoEm:serverTimestamp()});movementId=created.id;}else if(movementId)await updateDoc(doc(db,"users",user.uid,"contas",acc.id,"movimentacoes",movementId),movement);else{const created=await addDoc(collection(db,"users",user.uid,"contas",acc.id,"movimentacoes"),{...movement,criadoEm:serverTimestamp()});movementId=created.id;}await updateDoc(doc(db,"users",user.uid,"receitas",editing.id),{...record,movimentacaoId:movementId});reset();msg("Receita atualizada.","success");}else{const created=await addDoc(collection(db,"users",user.uid,"contas",acc.id,"movimentacoes"),{...movement,criadoEm:serverTimestamp()});await addDoc(collection(db,"users",user.uid,"receitas"),{...record,movimentacaoId:created.id,criadoEm:serverTimestamp()});reset();msg("Receita cadastrada.","success");}}catch(error){msg("Não foi possível salvar a receita.","error");console.error(error);}});
+onAuthStateChanged(auth,async current=>{user=current;if(stop)stop();if(!current)return;const snap=await getDocs(collection(db,"users",current.uid,"contas"));accounts=snap.docs.map(d=>({id:d.id,...d.data()}));renderAccounts();renderCategories();$("receitaData").value=today();stop=onSnapshot(query(collection(db,"users",current.uid,"receitas"),orderBy("data","desc")),snapshots=>{revenues=snapshots.docs.map(d=>({id:d.id,...d.data()}));render();});});
