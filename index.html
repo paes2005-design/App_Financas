@@ -39,7 +39,7 @@
       <header class="topbar"><button type="button" id="menuButton" class="menu-button" aria-label="Abrir ou fechar menu">☰</button><div><h2 id="pageTitle">Dashboard</h2><small id="userEmail"></small></div></header>
       <section id="content" class="content">
         <div id="dashboard" class="app-view dashboard-grid">
-          <article class="card"><span>Saldo total</span><strong id="saldoTotal">R$ 0,00</strong></article><article class="card income"><span>Receitas do mês</span><strong id="receitasMes">R$ 0,00</strong></article><article class="card expense"><span>Despesas do mês</span><strong id="despesasMes">R$ 0,00</strong></article><article class="card"><span>Resultado do mês</span><strong id="resultadoMes">R$ 0,00</strong></article>
+          <article class="card"><span>Saldo total em reais</span><strong id="saldoTotal">R$ 0,00</strong></article><article class="card income"><span>Receitas do mês</span><strong id="receitasMes">R$ 0,00</strong></article><article class="card expense"><span>Despesas do mês</span><strong id="despesasMes">R$ 0,00</strong></article><article class="card"><span>Resultado do mês</span><strong id="resultadoMes">R$ 0,00</strong></article>
           <article class="panel movements-panel"><h3>Últimas movimentações</h3><div id="listaMovimentacoes" class="empty-state">Nenhuma movimentação cadastrada.</div></article>
         </div>
 
@@ -50,32 +50,29 @@
               <select id="contaBanco" required>
                 <option value="">Selecione...</option>
                 <optgroup label="Segmento S1">
-                  <option value="bb">🟡 Banco do Brasil</option>
-                  <option value="bradesco">🔴 Bradesco</option>
-                  <option value="btg">🔵 BTG Pactual</option>
-                  <option value="caixa">🔷 Caixa Econômica Federal</option>
-                  <option value="itau">🟠 Itaú</option>
-                  <option value="santander">🔴 Santander</option>
+                  <option value="bb">🟡 Banco do Brasil</option><option value="bradesco">🔴 Bradesco</option><option value="btg">🔵 BTG Pactual</option><option value="caixa">🔷 Caixa Econômica Federal</option><option value="itau">🟠 Itaú</option><option value="santander">🔴 Santander</option>
                 </optgroup>
                 <optgroup label="Segmento S2">
-                  <option value="banrisul">🔵 Banrisul</option>
-                  <option value="bnb">🔵 Banco do Nordeste</option>
-                  <option value="bndes">🟢 BNDES</option>
-                  <option value="citi">🔵 Citibank</option>
-                  <option value="credit-suisse">🔷 Credit Suisse</option>
-                  <option value="safra">🟡 Banco Safra</option>
-                  <option value="bv">🔵 Banco BV</option>
+                  <option value="banrisul">🔵 Banrisul</option><option value="bnb">🔵 Banco do Nordeste</option><option value="bndes">🟢 BNDES</option><option value="citi">🔵 Citibank</option><option value="credit-suisse">🔷 Credit Suisse</option><option value="safra">🟡 Banco Safra</option><option value="bv">🔵 Banco BV</option>
                 </optgroup>
                 <option value="outro">✏️ Outro / nome livre</option>
               </select>
 
-              <div id="contaNomeLivreGrupo" class="hidden">
-                <label for="contaNomeLivre">Nome da conta</label>
-                <input id="contaNomeLivre" type="text" maxlength="60" placeholder="Ex.: Carteira, Cooperativa ou banco digital">
-              </div>
+              <div id="contaNomeLivreGrupo" class="hidden"><label for="contaNomeLivre">Nome da conta</label><input id="contaNomeLivre" type="text" maxlength="60" placeholder="Ex.: Carteira, cooperativa ou banco digital"></div>
 
               <label for="contaTipo">Tipo</label><select id="contaTipo"><option value="Conta corrente">Conta corrente</option><option value="Poupança">Poupança</option><option value="Carteira">Carteira</option><option value="Conta digital">Conta digital</option><option value="Outro">Outro</option></select>
-              <label for="contaSaldoInicial">Saldo inicial</label><input id="contaSaldoInicial" type="number" step="0.01" value="0" required>
+
+              <label for="contaSaldoInicial">Saldo inicial</label>
+              <div class="money-field" data-money-field>
+                <div class="money-input-row">
+                  <select id="contaMoeda" data-money-currency aria-label="Moeda do saldo">
+                    <option value="BRL">BRL · Real (R$)</option><option value="USD">USD · Dólar (US$)</option><option value="EUR">EUR · Euro (€)</option><option value="GBP">GBP · Libra (£)</option><option value="JPY">JPY · Iene (¥)</option><option value="CHF">CHF · Franco suíço</option><option value="CAD">CAD · Dólar canadense</option><option value="AUD">AUD · Dólar australiano</option><option value="ARS">ARS · Peso argentino</option><option value="CLP">CLP · Peso chileno</option><option value="MXN">MXN · Peso mexicano</option><option value="CNY">CNY · Yuan</option><option value="UYU">UYU · Peso uruguaio</option><option value="PYG">PYG · Guarani</option>
+                  </select>
+                  <input id="contaSaldoInicial" data-money-input type="text" inputmode="decimal" value="0,00" autocomplete="off" required>
+                  <button type="button" class="calculator-toggle" data-money-calculator aria-label="Abrir calculadora" title="Abrir calculadora">🧮</button>
+                </div>
+              </div>
+
               <button type="submit" class="primary form-button">Salvar conta</button><p id="contaMensagem" class="message" role="status"></p>
             </form></article>
             <article class="panel"><h3>Minhas contas</h3><div id="listaContas"><div class="empty-state">Nenhuma conta cadastrada.</div></div></article>
