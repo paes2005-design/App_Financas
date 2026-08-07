@@ -1,5 +1,5 @@
 import { getPeriod } from "./period.js";
-import { syncRecurrences } from "./recurrence-v2.js";
+import { syncRecurrences } from "./recurrence-v3.js";
 
 window.addEventListener("period-change",event=>{
   const view=event.detail?.viewId;
