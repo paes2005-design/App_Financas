@@ -9,7 +9,7 @@ import "./cartoes.js";
 import "./account-form-sync.js";
 import "./transaction-actions.js";
 import "./planned-edit-guard.js";
-import "./recurrence-v3.js";
+import "./recurrence-v4.js";
 import "./recurrence-period-bridge.js";
 import "./planned-settlement.js";
 import "./transaction-insights.js";
