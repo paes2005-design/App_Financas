@@ -1,4 +1,5 @@
 import { auth } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 let user=null;
 const style=document.createElement("style");
@@ -39,8 +40,6 @@ function decorate(root=document){ensureQuickSettle();root.querySelectorAll?.(".t
 
 decorate(document);
 const containers=["listaReceitas","listaDespesas","listaTransferencias"].map(id=>document.getElementById(id)).filter(Boolean);
-// Observa somente substituições das listas. Alterações internas do próprio menu são ignoradas,
-// evitando o ciclo de MutationObserver que travava o aplicativo.
 containers.forEach(container=>{
  const observer=new MutationObserver(mutations=>{
   const hasNewRow=mutations.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches?.(".transaction-item,.expense-item,.transfer-item")||n.querySelector?.(".transaction-item,.expense-item,.transfer-item"))));
