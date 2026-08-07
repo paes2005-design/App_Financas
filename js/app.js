@@ -6,6 +6,7 @@ import "./receitas-summary.js";
 import "./despesas.js";
 import "./period-views.js";
 import "./dashboard.js";
+import "./privacy-eye.js";
 import "./ui.js";
 import "./auth.js";
 import { initBankPicker } from "./bank-picker.js";
