@@ -35,13 +35,13 @@ test('parcelas de cartão avançam fatura mês a mês',()=>{const m=invoiceMonth
 
 const recurrence=fs.readFileSync('js/recurrence-v2.js','utf8');
 const dashboard=fs.readFileSync('js/dashboard-balance-forecast-v2.js','utf8');
-const cards=fs.readFileSync('js/card-expenses.js','utf8');
+const cardRules=fs.readFileSync('js/card-finance-rules.js','utf8');
 const exchange=fs.readFileSync('js/exchange.js','utf8');
-test('app usa motor de parcelamento por centavos',()=>{if(!recurrence.includes('splitTotal')||!recurrence.includes('base+(i<rest?1:0)'))throw new Error('motor de centavos não localizado');});
+test('app usa motor de parcelamento por centavos',()=>{if(!recurrence.includes('splitTotal')||!recurrence.includes('base+(i<rest?1:0)'))throw new Error('motor de centavos não localizado');if(!cardRules.includes('splitTotal'))throw new Error('cartão não usa motor de centavos');});
 test('app usa previsão mensal e saldo de abertura',()=>{if(!dashboard.includes('forecastBalance=opening+forecastResult')||!dashboard.includes('convertRows(mr)')||!dashboard.includes('convertRows(md)'))throw new Error('previsão mensal correta não localizada');});
 test('app bloqueia previsão antes do início da conta',()=>{if(!dashboard.includes('info.before')||!dashboard.includes('valid(r,info)'))throw new Error('guarda de início ausente');});
 test('app tem três escopos de exclusão de série',()=>{for(const x of ['scope==="one"','scope==="all"','future'])if(!recurrence.includes(x))throw new Error(`ausente ${x}`);});
 test('app consolida moedas via cotação',()=>{if(!exchange.includes('convertAccountsToBRL')||!exchange.includes('getRateToBRL'))throw new Error('conversão ausente');});
-test('app implementa competência real de fatura por dia de fechamento',()=>{const hasClosing=/card\.?fechamento|fechamentoDia|competenciaFatura|invoiceMonth/.test(cards);if(!hasClosing)throw new Error('despesa de cartão não usa o dia de fechamento para determinar a fatura');});
+test('app implementa competência real de fatura por fechamento',()=>{for(const x of ['invoiceMeta','competenciaFatura','card.fechamento','vencimentoFatura'])if(!cardRules.includes(x))throw new Error(`regra de fatura ausente: ${x}`);});
 
 if(failures.length){console.error(`\nAUDITORIA MATEMÁTICA: ${failures.length} FALHA(S)`);for(const f of failures)console.error('- '+f);process.exit(1);}console.log('\nAUDITORIA MATEMÁTICA OK — todas as regras validadas.');
