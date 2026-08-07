@@ -7,6 +7,7 @@ import "./despesas.js";
 import "./transferencias.js";
 import "./cartoes.js";
 import "./transaction-actions.js";
+import "./quick-settlement.js";
 import "./recurrence.js";
 import "./recurrence-period-bridge.js";
 import "./planned-settlement.js";
