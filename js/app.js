@@ -13,6 +13,7 @@ import "./card-expenses.js";
 import "./period-views.js";
 import "./dashboard.js";
 import "./dashboard-currency-breakdown.js";
+import "./dashboard-balance-forecast.js";
 import "./dashboard-analytics.js";
 import "./filter-modal.js";
 import "./privacy-eye.js";
