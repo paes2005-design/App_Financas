@@ -1,73 +1,23 @@
 import { auth, db } from "./firebase.js";
 import { getMoneyValue } from "./money.js";
-import { getCategoriesFor } from "./categorias.js";
 import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-
 let user=null;
-const style=document.createElement("style");
-style.textContent=`
-.quick-settle{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:.9rem}.quick-settle input{width:17px;height:17px;accent-color:var(--primary)}
-.transaction-actions,.expense-actions,.transfer-actions{position:relative}.txn-more{border:0!important;background:transparent!important;font-size:1.3rem!important;line-height:1;padding:2px 7px!important;color:var(--muted)!important}.txn-menu{position:absolute;right:0;top:100%;z-index:4600;min-width:150px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.17);padding:5px;display:none;text-align:left}.txn-menu.open{display:grid}.txn-menu button{display:block!important;width:100%;padding:9px 10px!important;text-align:left!important;border:0!important;background:transparent!important;border-radius:7px!important;color:var(--text)!important}.txn-menu button:hover{background:#eef3fa!important}.txn-menu .danger{color:var(--danger)!important}.txn-original-action{display:none!important}
-`;
-document.head.appendChild(style);
-
-const forms=[
- {id:"receitaForm",kind:"receita",prefix:"receita",save:"salvarReceita"},
- {id:"despesaForm",kind:"despesa",prefix:"despesa",save:"salvarDespesa"},
- {id:"transferForm",kind:"transferencia",prefix:"transfer",save:"transferSalvar"}
-];
-function ensureQuickSettle(){
- forms.forEach(c=>{const form=document.getElementById(c.id),save=document.getElementById(c.save);if(!form||!save||form.querySelector(`[data-quick-settle="${c.kind}"]`))return;const label=document.createElement("label");label.className="quick-settle";label.innerHTML=`<input type="checkbox" data-quick-settle="${c.kind}"> Efetivar ao salvar`;save.insertAdjacentElement("beforebegin",label);});
-}
-setTimeout(ensureQuickSettle,0);
-
+const style=document.createElement("style");style.textContent=`.quick-settle{display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:.9rem}.quick-settle input{width:17px;height:17px;accent-color:var(--primary)}.transaction-actions,.expense-actions,.transfer-actions{position:relative}.txn-more{border:0!important;background:transparent!important;font-size:1.3rem!important;line-height:1;padding:2px 7px!important;color:var(--muted)!important}.txn-menu{position:absolute;right:0;top:100%;z-index:4600;min-width:150px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.17);padding:5px;display:none;text-align:left}.txn-menu.open{display:grid}.txn-menu button{display:block!important;width:100%;padding:9px 10px!important;text-align:left!important;border:0!important;background:transparent!important;border-radius:7px!important;color:var(--text)!important}.txn-menu button:hover{background:#eef3fa!important}.txn-menu .danger{color:var(--danger)!important}.txn-original-action{display:none!important}`;document.head.appendChild(style);
+const forms=[{id:"receitaForm",kind:"receita",prefix:"receita",save:"salvarReceita"},{id:"despesaForm",kind:"despesa",prefix:"despesa",save:"salvarDespesa"},{id:"transferForm",kind:"transferencia",prefix:"transfer",save:"transferSalvar"}];
+function ensureQuickSettle(){forms.forEach(c=>{const form=document.getElementById(c.id),save=document.getElementById(c.save);if(!form||!save||form.querySelector(`[data-quick-settle="${c.kind}"]`))return;const label=document.createElement("label");label.className="quick-settle";label.innerHTML=`<input type="checkbox" data-quick-settle="${c.kind}"> Efetivar ao salvar`;save.insertAdjacentElement("beforebegin",label);});}setTimeout(ensureQuickSettle,0);
+const pad=n=>String(n).padStart(2,"0");
 function parts(data){const d=new Date(`${data}T12:00:00`),m=d.getMonth()+1;return{ano:d.getFullYear(),mes:m,trimestre:Math.ceil(m/3),semestre:m<=6?1:2,dataChave:data};}
-function text(id){return document.getElementById(id)?.value||"";}
-function selected(id){return document.getElementById(id)?.selectedOptions?.[0]?.textContent?.trim()||"";}
+function addMonths(data,n){const [y,m,d]=data.split("-").map(Number),base=new Date(y,m-1+n,1),last=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();return `${base.getFullYear()}-${pad(base.getMonth()+1)}-${pad(Math.min(d,last))}`;}
+function monthsBetween(start,end,max=600){const out=[];for(let i=0;i<max;i++){const d=addMonths(start,i);if(d>end)break;out.push(d);}return out;}
+function text(id){return document.getElementById(id)?.value||"";}function selected(id){return document.getElementById(id)?.selectedOptions?.[0]?.textContent?.trim()||"";}
 function message(kind,msg,type="success"){const id=kind==="receita"?"receitaMensagem":kind==="despesa"?"despesaMensagem":"transferMensagem",el=document.getElementById(id);if(el){el.textContent=msg;el.className=`message ${type}`;}}
+function formPayload(kind){const prefix=kind==="receita"?"receita":kind==="despesa"?"despesa":"transfer",data=text(`${prefix}Data`),valor=getMoneyValue(document.getElementById(`${prefix}Valor`)),moeda=text(`${prefix}Moeda`),descricao=text(`${prefix}Descricao`).trim(),categoriaId=text(`${prefix}Categoria`),categoriaNome=selected(`${prefix}Categoria`),subcategoria=text(`${prefix}Subcategoria`),tipo=text(`${prefix}Recorrencia`)||"unica";if(!data||!valor||valor<=0||!moeda||!descricao||!categoriaId)throw new Error("Preencha todos os campos obrigatórios.");const base={categoriaId,categoriaNome,subcategoria,descricao,moeda};if(kind==="receita"||kind==="despesa"){base.contaId=text(`${prefix}Conta`);base.contaNome=selected(`${prefix}Conta`);if(!base.contaId)throw new Error("Selecione uma conta.");}else{base.origemId=text("transferOrigem");base.origemNome=selected("transferOrigem");base.destinoId=text("transferDestino");base.destinoNome=selected("transferDestino");if(!base.origemId||!base.destinoId||base.origemId===base.destinoId)throw new Error("Selecione contas diferentes.");}return{prefix,data,valor,tipo,base};}
+async function createMovements(kind,base,valor,data,meta={}){const common={categoriaId:base.categoriaId,categoriaNome:base.categoriaNome,subcategoria:base.subcategoria,descricao:base.descricao,valor,moeda:base.moeda,data,...parts(data),competencia:data.slice(0,7),serieId:meta.serieId||null,recorrenciaTipo:meta.tipo||"unica",planejada:false,efetivada:true,dataEfetivacao:data,atualizadoEm:serverTimestamp()};if(kind==="receita"||kind==="despesa"){const ref=await addDoc(collection(db,"users",user.uid,"contas",base.contaId,"movimentacoes"),{...common,tipo:kind,origem:kind==="receita"?"receitas":"despesas",criadoEm:serverTimestamp()});return{movimentacaoId:ref.id};}const out=await addDoc(collection(db,"users",user.uid,"contas",base.origemId,"movimentacoes"),{...common,tipo:"despesa",origem:"transferencias",criadoEm:serverTimestamp()});const inn=await addDoc(collection(db,"users",user.uid,"contas",base.destinoId,"movimentacoes"),{...common,tipo:"receita",origem:"transferencias",criadoEm:serverTimestamp()});return{movSaida:out.id,movEntrada:inn.id};}
+async function createOccurrence(kind,base,data,valor,{effective=false,serieId=null,tipo="unica",parcelaNumero=null,parcelasTotal=null}={}){const ids=effective?await createMovements(kind,base,valor,data,{serieId,tipo}):{},record={...base,valor,data,...parts(data),serieId,recorrenciaTipo:tipo,competencia:data.slice(0,7),parcelaNumero,parcelasTotal,planejada:!effective,efetivada:effective,...(effective?{dataEfetivacao:data,valorEfetivado:valor}:{}),...ids,criadoEm:serverTimestamp(),atualizadoEm:serverTimestamp()};await addDoc(collection(db,"users",user.uid,kind==="receita"?"receitas":kind==="despesa"?"despesas":"transferencias"),record);}
+async function saveFromForm(kind,quick){const d=formPayload(kind);if(d.tipo==="unica"){await createOccurrence(kind,d.base,d.data,d.valor,{effective:quick});return;}if(!quick)return false;let fim=null,qtd=null,valorParcela=d.valor,valorTotal=null;if(d.tipo==="periodo"){fim=text(`${d.prefix}Fim`);if(!fim||fim<d.data)throw new Error("Informe uma data final válida.");}if(d.tipo==="parcelada"){qtd=Math.max(2,Number(text(`${d.prefix}Parcelas`)||2));const modo=text(`${d.prefix}ValorModo`)||"total";valorParcela=modo==="total"?d.valor/qtd:d.valor;valorTotal=modo==="total"?d.valor:d.valor*qtd;fim=addMonths(d.data,qtd-1);}const serie=await addDoc(collection(db,"users",user.uid,"recorrencias"),{operacao:kind,tipoRecorrencia:d.tipo,inicio:d.data,fim,quantidade:qtd,valorParcela,valorTotal,base:d.base,excecoes:[],ativo:true,criadoEm:serverTimestamp(),atualizadoEm:serverTimestamp()});if(d.tipo==="fixa"){await createOccurrence(kind,d.base,d.data,d.valor,{effective:true,serieId:serie.id,tipo:d.tipo});return true;}const dates=d.tipo==="parcelada"?Array.from({length:qtd},(_,i)=>addMonths(d.data,i)):monthsBetween(d.data,fim);for(let i=0;i<dates.length;i++)await createOccurrence(kind,d.base,dates[i],valorParcela,{effective:i===0,serieId:serie.id,tipo:d.tipo,parcelaNumero:d.tipo==="parcelada"?i+1:null,parcelasTotal:d.tipo==="parcelada"?qtd:null});return true;}
 
-async function savePlannedUnique(kind){
- const prefix=kind==="receita"?"receita":kind==="despesa"?"despesa":"transfer";
- const data=text(`${prefix}Data`),valor=getMoneyValue(document.getElementById(`${prefix}Valor`)),moeda=text(`${prefix}Moeda`),descricao=text(`${prefix}Descricao`).trim();
- const categoriaId=text(`${prefix}Categoria`),categoriaNome=selected(`${prefix}Categoria`),subcategoria=text(`${prefix}Subcategoria`);
- if(!data||!valor||valor<=0||!moeda||!descricao||!categoriaId)throw new Error("Preencha todos os campos obrigatórios.");
- const common={categoriaId,categoriaNome,subcategoria,descricao,valor,moeda,data,...parts(data),recorrenciaTipo:"unica",competencia:data.slice(0,7),planejada:true,efetivada:false,criadoEm:serverTimestamp(),atualizadoEm:serverTimestamp()};
- if(kind==="receita"||kind==="despesa"){
-  const contaId=text(`${prefix}Conta`),contaNome=selected(`${prefix}Conta`);if(!contaId)throw new Error("Selecione uma conta.");
-  await addDoc(collection(db,"users",user.uid,kind==="receita"?"receitas":"despesas"),{...common,contaId,contaNome});
- }else{
-  const origemId=text("transferOrigem"),destinoId=text("transferDestino");if(!origemId||!destinoId||origemId===destinoId)throw new Error("Selecione contas diferentes.");
-  await addDoc(collection(db,"users",user.uid,"transferencias"),{...common,origemId,origemNome:selected("transferOrigem"),destinoId,destinoNome:selected("transferDestino")});
- }
- document.getElementById(kind==="transferencia"?"transferForm":`${prefix}Form`)?.reset();
- message(kind,"Operação salva como prevista. Use ⋮ → Efetivar quando ela acontecer.");
-}
-
-document.addEventListener("submit",async e=>{
- const cfg=forms.find(c=>e.target.id===c.id);if(!cfg||!user)return;
- const type=document.getElementById(`${cfg.prefix}Recorrencia`)?.value||"unica";
- const quick=e.target.querySelector(`[data-quick-settle="${cfg.kind}"]`)?.checked===true;
- if(type!=="unica"||quick)return;
- e.preventDefault();e.stopImmediatePropagation();
- try{await savePlannedUnique(cfg.kind);}catch(err){console.error(err);message(cfg.kind,err.message||"Não foi possível salvar.","error");}
-},true);
-
+document.addEventListener("submit",async e=>{const cfg=forms.find(c=>e.target.id===c.id);if(!cfg||!user)return;const title=document.getElementById(cfg.kind==="receita"?"receitaFormTitulo":cfg.kind==="despesa"?"despesaFormTitulo":"transferFormTitle")?.textContent||"";if(/^Editar/i.test(title))return;const quick=e.target.querySelector(`[data-quick-settle="${cfg.kind}"]`)?.checked===true,type=document.getElementById(`${cfg.prefix}Recorrencia`)?.value||"unica";if(type!=="unica"&&!quick)return;e.preventDefault();e.stopImmediatePropagation();try{await saveFromForm(cfg.kind,quick);e.target.reset();message(cfg.kind,quick?"Operação salva e efetivada.":"Operação salva como prevista. Use ⋮ → Efetivar quando ela acontecer.");}catch(err){console.error(err);message(cfg.kind,err.message||"Não foi possível salvar.","error");}},true);
 function closeMenus(except=null){document.querySelectorAll(".txn-menu.open").forEach(m=>{if(m!==except)m.classList.remove("open");});}
-function buildMenu(actions){
- if(actions.querySelector(".txn-more"))return;
- const edit=actions.querySelector(".edit-revenue,.edit-expense,.edit-transfer"),del=actions.querySelector(".delete-revenue,.delete-expense,.delete-transfer"),settle=actions.querySelector("[data-settle-record]");
- if(!edit&&!del&&!settle)return;
- [edit,del].filter(Boolean).forEach(b=>b.classList.add("txn-original-action"));const holder=actions.querySelector("[data-settle-id]");if(holder)holder.classList.add("txn-original-action");
- const more=document.createElement("button");more.type="button";more.className="txn-more";more.setAttribute("aria-label","Mais opções");more.textContent="⋮";
- const menu=document.createElement("div");menu.className="txn-menu";
- if(edit){const b=document.createElement("button");b.type="button";b.textContent="Editar";b.onclick=()=>{closeMenus();edit.click();};menu.appendChild(b);}
- if(settle){const b=document.createElement("button");b.type="button";b.textContent="Efetivar";b.onclick=()=>{closeMenus();settle.checked=true;settle.dispatchEvent(new Event("change",{bubbles:true}));};menu.appendChild(b);}
- if(del){const b=document.createElement("button");b.type="button";b.textContent="Excluir";b.className="danger";b.onclick=()=>{closeMenus();del.click();};menu.appendChild(b);}
- more.onclick=e=>{e.stopPropagation();const opening=!menu.classList.contains("open");closeMenus(menu);menu.classList.toggle("open",opening);};actions.append(more,menu);
-}
-function decorate(){ensureQuickSettle();document.querySelectorAll(".transaction-actions,.expense-actions,.transfer-actions").forEach(buildMenu);}
-let timer;new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(decorate,40);}).observe(document.body,{childList:true,subtree:true});
-document.addEventListener("click",()=>closeMenus());
-window.addEventListener("categories-updated",decorate);
-onAuthStateChanged(auth,current=>{user=current;setTimeout(decorate,80);});
+function buildMenu(actions){if(actions.querySelector(".txn-more"))return;const edit=actions.querySelector(".edit-revenue,.edit-expense,.edit-transfer"),del=actions.querySelector(".delete-revenue,.delete-expense,.delete-transfer"),settle=actions.querySelector("[data-settle-record]");if(!edit&&!del&&!settle)return;[edit,del].filter(Boolean).forEach(b=>b.classList.add("txn-original-action"));const holder=actions.querySelector("[data-settle-id]");if(holder)holder.classList.add("txn-original-action");const more=document.createElement("button");more.type="button";more.className="txn-more";more.setAttribute("aria-label","Mais opções");more.textContent="⋮";const menu=document.createElement("div");menu.className="txn-menu";if(edit){const b=document.createElement("button");b.type="button";b.textContent="Editar";b.onclick=()=>{closeMenus();edit.click();};menu.appendChild(b);}if(settle){const b=document.createElement("button");b.type="button";b.textContent="Efetivar";b.onclick=()=>{closeMenus();settle.checked=true;settle.dispatchEvent(new Event("change",{bubbles:true}));};menu.appendChild(b);}if(del){const b=document.createElement("button");b.type="button";b.textContent="Excluir";b.className="danger";b.onclick=()=>{closeMenus();del.click();};menu.appendChild(b);}more.onclick=e=>{e.stopPropagation();const opening=!menu.classList.contains("open");closeMenus(menu);menu.classList.toggle("open",opening);};actions.append(more,menu);}
+function decorate(){ensureQuickSettle();document.querySelectorAll(".transaction-actions,.expense-actions,.transfer-actions").forEach(buildMenu);}let timer;new MutationObserver(()=>{clearTimeout(timer);timer=setTimeout(decorate,40);}).observe(document.body,{childList:true,subtree:true});document.addEventListener("click",()=>closeMenus());window.addEventListener("categories-updated",decorate);onAuthStateChanged(auth,current=>{user=current;setTimeout(decorate,80);});
