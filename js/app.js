@@ -8,6 +8,8 @@ import "./transferencias.js";
 import "./cartoes.js";
 import "./period-views.js";
 import "./dashboard.js";
+import "./dashboard-analytics.js";
+import "./filter-modal.js";
 import "./privacy-eye.js";
 import "./ui.js";
 import "./auth.js";
