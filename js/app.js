@@ -6,6 +6,7 @@ import "./receitas-summary.js";
 import "./despesas.js";
 import "./transferencias.js";
 import "./cartoes.js";
+import "./recurrence.js";
 import "./period-views.js";
 import "./dashboard.js";
 import "./dashboard-currency-breakdown.js";
