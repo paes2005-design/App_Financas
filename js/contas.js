@@ -1,179 +1,20 @@
 import { auth, db } from "./firebase.js";
 import { formatMoney, getMoneyCurrency, getMoneyValue, resetMoneyField } from "./money.js";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
 
 const BANCOS = {
-  bb: { nome: "Banco do Brasil", simbolo: "BB", cor: "#f8d117", segmento: "S1" },
-  bradesco: { nome: "Bradesco", simbolo: "BRA", cor: "#cc092f", segmento: "S1" },
-  btg: { nome: "BTG Pactual", simbolo: "BTG", cor: "#123c69", segmento: "S1" },
-  caixa: { nome: "Caixa Econômica Federal", simbolo: "CEF", cor: "#005ca9", segmento: "S1" },
-  itau: { nome: "Itaú", simbolo: "IT", cor: "#ec7000", segmento: "S1" },
-  santander: { nome: "Santander", simbolo: "SAN", cor: "#ec0000", segmento: "S1" },
-  banrisul: { nome: "Banrisul", simbolo: "BRS", cor: "#00529b", segmento: "S2" },
-  bnb: { nome: "Banco do Nordeste", simbolo: "BNB", cor: "#00529b", segmento: "S2" },
-  bndes: { nome: "BNDES", simbolo: "BND", cor: "#16834b", segmento: "S2" },
-  citi: { nome: "Citibank", simbolo: "CITI", cor: "#056dae", segmento: "S2" },
-  "credit-suisse": { nome: "Credit Suisse", simbolo: "CS", cor: "#17365d", segmento: "S2" },
-  safra: { nome: "Banco Safra", simbolo: "SAF", cor: "#b69324", segmento: "S2" },
-  bv: { nome: "Banco BV", simbolo: "BV", cor: "#2446f5", segmento: "S2" }
+  bb:{nome:"Banco do Brasil",simbolo:"BB",cor:"#f8d117",segmento:"S1"}, bradesco:{nome:"Bradesco",simbolo:"BRA",cor:"#cc092f",segmento:"S1"}, btg:{nome:"BTG Pactual",simbolo:"BTG",cor:"#123c69",segmento:"S1"}, caixa:{nome:"Caixa Econômica Federal",simbolo:"CEF",cor:"#005ca9",segmento:"S1"}, itau:{nome:"Itaú",simbolo:"IT",cor:"#ec7000",segmento:"S1"}, santander:{nome:"Santander",simbolo:"SAN",cor:"#ec0000",segmento:"S1"},
+  sicoob:{nome:"Banco Sicoob",simbolo:"SIC",cor:"#003641",segmento:"S2"}, banrisul:{nome:"Banrisul",simbolo:"BRS",cor:"#00529b",segmento:"S2"}, sicredi:{nome:"Banco Cooperativo Sicredi",simbolo:"SCD",cor:"#3fae2a",segmento:"S2"}, bnb:{nome:"Banco do Nordeste",simbolo:"BNB",cor:"#00529b",segmento:"S2"}, bndes:{nome:"BNDES",simbolo:"BND",cor:"#16834b",segmento:"S2"}, citi:{nome:"Citibank",simbolo:"CITI",cor:"#056dae",segmento:"S2"}, nubank:{nome:"Nubank / Nu Pagamentos",simbolo:"NU",cor:"#820ad1",segmento:"S2"}, safra:{nome:"Banco Safra",simbolo:"SAF",cor:"#b69324",segmento:"S2"}, bv:{nome:"Banco BV / Votorantim",simbolo:"BV",cor:"#2446f5",segmento:"S2"}, xp:{nome:"XP",simbolo:"XP",cor:"#111111",segmento:"S2"},
+  abc:{nome:"Banco ABC Brasil",simbolo:"ABC",cor:"#005a9c",segmento:"S3"}, agibank:{nome:"Agibank",simbolo:"AGI",cor:"#005baa",segmento:"S3"}, c6:{nome:"C6 Bank",simbolo:"C6",cor:"#242424",segmento:"S3"}, banestes:{nome:"Banestes",simbolo:"BAN",cor:"#00539b",segmento:"S3"}, "banco-amazonia":{nome:"Banco da Amazônia",simbolo:"BASA",cor:"#008c45",segmento:"S3"}, daycoval:{nome:"Banco Daycoval",simbolo:"DAY",cor:"#00529b",segmento:"S3"}, bmg:{nome:"Banco BMG",simbolo:"BMG",cor:"#f58220",segmento:"S3"}, brb:{nome:"BRB",simbolo:"BRB",cor:"#0067b1",segmento:"S3"}, bs2:{nome:"Banco BS2",simbolo:"BS2",cor:"#ff5a1f",segmento:"S3"}, inter:{nome:"Banco Inter",simbolo:"INT",cor:"#ff7a00",segmento:"S3"}, "mercado-pago":{nome:"Mercado Pago",simbolo:"MP",cor:"#00a8e0",segmento:"S3"}, mercantil:{nome:"Banco Mercantil",simbolo:"MB",cor:"#005baa",segmento:"S3"}, pagbank:{nome:"PagBank",simbolo:"PAG",cor:"#00a650",segmento:"S3"}, picpay:{nome:"PicPay",simbolo:"PIC",cor:"#21c25e",segmento:"S3"}, pine:{nome:"Banco Pine",simbolo:"PINE",cor:"#153e7e",segmento:"S3"}, porto:{nome:"Porto Bank / Porto Seguro",simbolo:"POR",cor:"#0076c0",segmento:"S3"}, sofisa:{nome:"Banco Sofisa",simbolo:"SOF",cor:"#003f7d",segmento:"S3"}, stone:{nome:"Stone",simbolo:"ST",cor:"#00a868",segmento:"S3"}, unicred:{nome:"Unicred",simbolo:"UNI",cor:"#005f4b",segmento:"S3"}, ailos:{nome:"Ailos",simbolo:"AIL",cor:"#00a99d",segmento:"S3"}, cresol:{nome:"Cresol",simbolo:"CRE",cor:"#f4b400",segmento:"S3"}
 };
 
-const form = document.getElementById("contaForm");
-const bancoInput = document.getElementById("contaBanco");
-const nomeLivreGrupo = document.getElementById("contaNomeLivreGrupo");
-const nomeLivreInput = document.getElementById("contaNomeLivre");
-const tipoInput = document.getElementById("contaTipo");
-const saldoInput = document.getElementById("contaSaldoInicial");
-const lista = document.getElementById("listaContas");
-const mensagem = document.getElementById("contaMensagem");
-const saldoTotal = document.getElementById("saldoTotal");
-
-let usuarioAtual = null;
-let pararEscuta = null;
-
-function mostrarMensagem(texto = "", tipo = "") {
-  mensagem.textContent = texto;
-  mensagem.className = `message ${tipo}`.trim();
-}
-
-function escapeHtml(valor = "") {
-  return String(valor).replace(/[&<>'"]/g, (caractere) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
-  })[caractere]);
-}
-
-function obterDadosInstituicao() {
-  const chave = bancoInput.value;
-  if (chave === "outro") {
-    const nome = nomeLivreInput.value.trim();
-    return { chave: "outro", nome, simbolo: nome ? nome.slice(0, 3).toUpperCase() : "OUT", cor: "#607d8b", segmento: "Livre" };
-  }
-  const banco = BANCOS[chave];
-  return banco ? { chave, ...banco } : null;
-}
-
-function renderizarContas(contas) {
-  const totalBRL = contas
-    .filter((conta) => (conta.moeda || "BRL") === "BRL")
-    .reduce((soma, conta) => soma + Number(conta.saldoInicial || 0), 0);
-  saldoTotal.textContent = formatMoney(totalBRL, "BRL");
-
-  if (!contas.length) {
-    lista.innerHTML = '<div class="empty-state">Nenhuma conta cadastrada.</div>';
-    return;
-  }
-
-  lista.innerHTML = contas.map((conta) => {
-    const moeda = conta.moeda || "BRL";
-    return `
-      <article class="account-item">
-        <div class="account-main">
-          <span class="bank-symbol" style="--bank-color:${escapeHtml(conta.cor || "#607d8b")}">${escapeHtml(conta.simbolo || "CTA")}</span>
-          <div><strong>${escapeHtml(conta.nome)}</strong><span>${escapeHtml(conta.tipo)}${conta.segmento ? ` · ${escapeHtml(conta.segmento)}` : ""} · ${escapeHtml(moeda)}</span></div>
-        </div>
-        <div class="account-value">
-          <strong>${formatMoney(conta.saldoInicial, moeda)}</strong>
-          <button type="button" class="delete-account" data-id="${conta.id}" aria-label="Excluir ${escapeHtml(conta.nome)}">Excluir</button>
-        </div>
-      </article>`;
-  }).join("");
-
-  lista.querySelectorAll(".delete-account").forEach((button) => {
-    button.addEventListener("click", async () => {
-      if (!usuarioAtual || !confirm("Excluir esta conta?")) return;
-      try {
-        await deleteDoc(doc(db, "users", usuarioAtual.uid, "contas", button.dataset.id));
-      } catch (error) {
-        mostrarMensagem("Não foi possível excluir a conta.", "error");
-        console.error(error);
-      }
-    });
-  });
-}
-
-bancoInput.addEventListener("change", () => {
-  const livre = bancoInput.value === "outro";
-  nomeLivreGrupo.classList.toggle("hidden", !livre);
-  nomeLivreInput.required = livre;
-  if (!livre) nomeLivreInput.value = "";
-});
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  mostrarMensagem();
-
-  if (!usuarioAtual) {
-    mostrarMensagem("Faça login para cadastrar uma conta.", "error");
-    return;
-  }
-
-  const instituicao = obterDadosInstituicao();
-  const tipo = tipoInput.value;
-  const saldoInicial = getMoneyValue(saldoInput);
-  const moeda = getMoneyCurrency(saldoInput);
-
-  if (!instituicao) {
-    mostrarMensagem("Selecione um banco ou a opção de nome livre.", "error");
-    return;
-  }
-  if (!instituicao.nome) {
-    mostrarMensagem("Informe o nome da conta.", "error");
-    return;
-  }
-  if (!Number.isFinite(saldoInicial)) {
-    mostrarMensagem("Informe um saldo inicial válido.", "error");
-    return;
-  }
-
-  try {
-    await addDoc(collection(db, "users", usuarioAtual.uid, "contas"), {
-      bancoId: instituicao.chave,
-      nome: instituicao.nome,
-      simbolo: instituicao.simbolo,
-      cor: instituicao.cor,
-      segmento: instituicao.segmento,
-      tipo,
-      saldoInicial,
-      moeda,
-      ativa: true,
-      criadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp()
-    });
-
-    form.reset();
-    nomeLivreGrupo.classList.add("hidden");
-    nomeLivreInput.required = false;
-    resetMoneyField(saldoInput, "BRL");
-    mostrarMensagem("Conta cadastrada com sucesso.", "success");
-  } catch (error) {
-    mostrarMensagem("Não foi possível cadastrar a conta.", "error");
-    console.error(error);
-  }
-});
-
-onAuthStateChanged(auth, (user) => {
-  usuarioAtual = user;
-  if (pararEscuta) pararEscuta();
-  if (!user) {
-    renderizarContas([]);
-    return;
-  }
-
-  const contasQuery = query(collection(db, "users", user.uid, "contas"), orderBy("criadoEm", "desc"));
-  pararEscuta = onSnapshot(contasQuery, (snapshot) => {
-    renderizarContas(snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() })));
-  }, (error) => {
-    mostrarMensagem("Não foi possível carregar as contas.", "error");
-    console.error(error);
-  });
-});
+const form=document.getElementById("contaForm"), bancoInput=document.getElementById("contaBanco"), nomeLivreGrupo=document.getElementById("contaNomeLivreGrupo"), nomeLivreInput=document.getElementById("contaNomeLivre"), tipoInput=document.getElementById("contaTipo"), saldoInput=document.getElementById("contaSaldoInicial"), lista=document.getElementById("listaContas"), mensagem=document.getElementById("contaMensagem"), saldoTotal=document.getElementById("saldoTotal");
+let usuarioAtual=null, pararEscuta=null;
+function mostrarMensagem(texto="",tipo=""){mensagem.textContent=texto;mensagem.className=`message ${tipo}`.trim()}
+function escapeHtml(valor=""){return String(valor).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c])}
+function obterDadosInstituicao(){const chave=bancoInput.value;if(chave==="outro"){const nome=nomeLivreInput.value.trim();return{chave:"outro",nome,simbolo:nome?nome.slice(0,3).toUpperCase():"OUT",cor:"#607d8b",segmento:"Livre"}}const banco=BANCOS[chave];return banco?{chave,...banco}:null}
+function renderizarContas(contas){const totalBRL=contas.filter(c=>(c.moeda||"BRL")==="BRL").reduce((s,c)=>s+Number(c.saldoInicial||0),0);saldoTotal.textContent=formatMoney(totalBRL,"BRL");if(!contas.length){lista.innerHTML='<div class="empty-state">Nenhuma conta cadastrada.</div>';return}lista.innerHTML=contas.map(c=>{const moeda=c.moeda||"BRL";return `<article class="account-item"><div class="account-main"><span class="bank-symbol" style="--bank-color:${escapeHtml(c.cor||"#607d8b")}">${escapeHtml(c.simbolo||"CTA")}</span><div><strong>${escapeHtml(c.nome)}</strong><span>${escapeHtml(c.tipo)}${c.segmento?` · ${escapeHtml(c.segmento)}`:""} · ${escapeHtml(moeda)}</span></div></div><div class="account-value"><strong>${formatMoney(c.saldoInicial,moeda)}</strong><button type="button" class="delete-account" data-id="${c.id}" aria-label="Excluir ${escapeHtml(c.nome)}">Excluir</button></div></article>`}).join("");lista.querySelectorAll(".delete-account").forEach(b=>b.addEventListener("click",async()=>{if(!usuarioAtual||!confirm("Excluir esta conta?"))return;try{await deleteDoc(doc(db,"users",usuarioAtual.uid,"contas",b.dataset.id))}catch(e){mostrarMensagem("Não foi possível excluir a conta.","error");console.error(e)}}))}
+bancoInput.addEventListener("change",()=>{const livre=bancoInput.value==="outro";nomeLivreGrupo.classList.toggle("hidden",!livre);nomeLivreInput.required=livre;if(!livre)nomeLivreInput.value=""});
+form.addEventListener("submit",async event=>{event.preventDefault();mostrarMensagem();if(!usuarioAtual){mostrarMensagem("Faça login para cadastrar uma conta.","error");return}const instituicao=obterDadosInstituicao(),tipo=tipoInput.value,saldoInicial=getMoneyValue(saldoInput),moeda=getMoneyCurrency(saldoInput);if(!instituicao){mostrarMensagem("Selecione um banco ou a opção de nome livre.","error");return}if(!instituicao.nome){mostrarMensagem("Informe o nome da conta.","error");return}if(!Number.isFinite(saldoInicial)){mostrarMensagem("Informe um saldo inicial válido.","error");return}try{await addDoc(collection(db,"users",usuarioAtual.uid,"contas"),{bancoId:instituicao.chave,nome:instituicao.nome,simbolo:instituicao.simbolo,cor:instituicao.cor,segmento:instituicao.segmento,tipo,saldoInicial,moeda,ativa:true,criadoEm:serverTimestamp(),atualizadoEm:serverTimestamp()});form.reset();nomeLivreGrupo.classList.add("hidden");nomeLivreInput.required=false;resetMoneyField(saldoInput,"BRL");mostrarMensagem("Conta cadastrada com sucesso.","success")}catch(e){mostrarMensagem("Não foi possível cadastrar a conta.","error");console.error(e)}});
+onAuthStateChanged(auth,user=>{usuarioAtual=user;if(pararEscuta)pararEscuta();if(!user){renderizarContas([]);return}const contasQuery=query(collection(db,"users",user.uid,"contas"),orderBy("criadoEm","desc"));pararEscuta=onSnapshot(contasQuery,snapshot=>renderizarContas(snapshot.docs.map(d=>({id:d.id,...d.data()}))),e=>{mostrarMensagem("Não foi possível carregar as contas.","error");console.error(e)})});
