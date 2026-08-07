@@ -1,5 +1,6 @@
 import "./ui.js";
 import "./auth.js";
+import "./money.js";
 import "./contas.js";
 
 if ("serviceWorker" in navigator) {
