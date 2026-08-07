@@ -19,5 +19,9 @@ jobs:
         run: |
           find js -name '*.js' -print0 | xargs -0 -n1 node --check
           node --check sw.js
+      - name: Check undefined symbols and structural errors
+        run: |
+          npm install --no-save eslint@9
+          npx eslint js sw.js
       - name: Run structural smoke test
         run: node scripts/smoke-test.mjs
