@@ -1,4 +1,5 @@
 import { auth, db } from "./firebase.js";
+import { formatMoney, getMoneyCurrency, getMoneyValue, resetMoneyField } from "./money.js";
 import {
   addDoc,
   collection,
@@ -40,11 +41,6 @@ const saldoTotal = document.getElementById("saldoTotal");
 let usuarioAtual = null;
 let pararEscuta = null;
 
-const formatarMoeda = (valor) => Number(valor || 0).toLocaleString("pt-BR", {
-  style: "currency",
-  currency: "BRL"
-});
-
 function mostrarMensagem(texto = "", tipo = "") {
   mensagem.textContent = texto;
   mensagem.className = `message ${tipo}`.trim();
@@ -52,56 +48,45 @@ function mostrarMensagem(texto = "", tipo = "") {
 
 function escapeHtml(valor = "") {
   return String(valor).replace(/[&<>'"]/g, (caractere) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-    '"': "&quot;"
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
   })[caractere]);
 }
 
 function obterDadosInstituicao() {
   const chave = bancoInput.value;
-
   if (chave === "outro") {
     const nome = nomeLivreInput.value.trim();
-    return {
-      chave: "outro",
-      nome,
-      simbolo: nome ? nome.slice(0, 3).toUpperCase() : "OUT",
-      cor: "#607d8b",
-      segmento: "Livre"
-    };
+    return { chave: "outro", nome, simbolo: nome ? nome.slice(0, 3).toUpperCase() : "OUT", cor: "#607d8b", segmento: "Livre" };
   }
-
   const banco = BANCOS[chave];
   return banco ? { chave, ...banco } : null;
 }
 
 function renderizarContas(contas) {
-  const total = contas.reduce((soma, conta) => soma + Number(conta.saldoInicial || 0), 0);
-  saldoTotal.textContent = formatarMoeda(total);
+  const totalBRL = contas
+    .filter((conta) => (conta.moeda || "BRL") === "BRL")
+    .reduce((soma, conta) => soma + Number(conta.saldoInicial || 0), 0);
+  saldoTotal.textContent = formatMoney(totalBRL, "BRL");
 
   if (!contas.length) {
     lista.innerHTML = '<div class="empty-state">Nenhuma conta cadastrada.</div>';
     return;
   }
 
-  lista.innerHTML = contas.map((conta) => `
-    <article class="account-item">
-      <div class="account-main">
-        <span class="bank-symbol" style="--bank-color:${escapeHtml(conta.cor || "#607d8b")}">${escapeHtml(conta.simbolo || "CTA")}</span>
-        <div>
-          <strong>${escapeHtml(conta.nome)}</strong>
-          <span>${escapeHtml(conta.tipo)}${conta.segmento ? ` · ${escapeHtml(conta.segmento)}` : ""}</span>
+  lista.innerHTML = contas.map((conta) => {
+    const moeda = conta.moeda || "BRL";
+    return `
+      <article class="account-item">
+        <div class="account-main">
+          <span class="bank-symbol" style="--bank-color:${escapeHtml(conta.cor || "#607d8b")}">${escapeHtml(conta.simbolo || "CTA")}</span>
+          <div><strong>${escapeHtml(conta.nome)}</strong><span>${escapeHtml(conta.tipo)}${conta.segmento ? ` · ${escapeHtml(conta.segmento)}` : ""} · ${escapeHtml(moeda)}</span></div>
         </div>
-      </div>
-      <div class="account-value">
-        <strong>${formatarMoeda(conta.saldoInicial)}</strong>
-        <button type="button" class="delete-account" data-id="${conta.id}" aria-label="Excluir ${escapeHtml(conta.nome)}">Excluir</button>
-      </div>
-    </article>
-  `).join("");
+        <div class="account-value">
+          <strong>${formatMoney(conta.saldoInicial, moeda)}</strong>
+          <button type="button" class="delete-account" data-id="${conta.id}" aria-label="Excluir ${escapeHtml(conta.nome)}">Excluir</button>
+        </div>
+      </article>`;
+  }).join("");
 
   lista.querySelectorAll(".delete-account").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -134,18 +119,17 @@ form.addEventListener("submit", async (event) => {
 
   const instituicao = obterDadosInstituicao();
   const tipo = tipoInput.value;
-  const saldoInicial = Number(saldoInput.value.replace(",", "."));
+  const saldoInicial = getMoneyValue(saldoInput);
+  const moeda = getMoneyCurrency(saldoInput);
 
   if (!instituicao) {
     mostrarMensagem("Selecione um banco ou a opção de nome livre.", "error");
     return;
   }
-
   if (!instituicao.nome) {
     mostrarMensagem("Informe o nome da conta.", "error");
     return;
   }
-
   if (!Number.isFinite(saldoInicial)) {
     mostrarMensagem("Informe um saldo inicial válido.", "error");
     return;
@@ -160,6 +144,7 @@ form.addEventListener("submit", async (event) => {
       segmento: instituicao.segmento,
       tipo,
       saldoInicial,
+      moeda,
       ativa: true,
       criadoEm: serverTimestamp(),
       atualizadoEm: serverTimestamp()
@@ -168,7 +153,7 @@ form.addEventListener("submit", async (event) => {
     form.reset();
     nomeLivreGrupo.classList.add("hidden");
     nomeLivreInput.required = false;
-    saldoInput.value = "0";
+    resetMoneyField(saldoInput, "BRL");
     mostrarMensagem("Conta cadastrada com sucesso.", "success");
   } catch (error) {
     mostrarMensagem("Não foi possível cadastrar a conta.", "error");
@@ -179,20 +164,14 @@ form.addEventListener("submit", async (event) => {
 onAuthStateChanged(auth, (user) => {
   usuarioAtual = user;
   if (pararEscuta) pararEscuta();
-
   if (!user) {
     renderizarContas([]);
     return;
   }
 
-  const contasQuery = query(
-    collection(db, "users", user.uid, "contas"),
-    orderBy("criadoEm", "desc")
-  );
-
+  const contasQuery = query(collection(db, "users", user.uid, "contas"), orderBy("criadoEm", "desc"));
   pararEscuta = onSnapshot(contasQuery, (snapshot) => {
-    const contas = snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() }));
-    renderizarContas(contas);
+    renderizarContas(snapshot.docs.map((documento) => ({ id: documento.id, ...documento.data() })));
   }, (error) => {
     mostrarMensagem("Não foi possível carregar as contas.", "error");
     console.error(error);
