@@ -23,7 +23,11 @@ export function createMonthNavigator(viewId,container){
   const state=states.get(viewId)||{year:now.getFullYear(),month:now.getMonth()+1};
   states.set(viewId,state);
   container.classList.add("month-navigator");
-  container.innerHTML=`<button type="button" data-month-prev aria-label="Mês anterior">‹</button><strong data-month-label></strong><button type="button" data-month-next aria-label="Próximo mês">›</button><button type="button" data-month-current class="month-current">Mês atual</button>`;
+  container.innerHTML=`
+    <button type="button" class="month-prev" data-month-prev aria-label="Mês anterior">‹</button>
+    <strong class="month-label" data-month-label></strong>
+    <button type="button" class="month-next" data-month-next aria-label="Próximo mês">›</button>
+    <button type="button" data-month-current class="month-current">Mês atual</button>`;
   const label=container.querySelector("[data-month-label]");
   const paint=()=>{label.textContent=monthLabel(state.year,state.month);};
   const move=(delta)=>{const date=new Date(state.year,state.month-1+delta,1);state.year=date.getFullYear();state.month=date.getMonth()+1;paint();emit(viewId);};
@@ -44,6 +48,17 @@ export function getPeriod(viewId){
 if(!document.getElementById("month-navigator-styles")){
   const style=document.createElement("style");
   style.id="month-navigator-styles";
-  style.textContent=`.month-navigator{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(140px,190px) auto auto;align-items:center;justify-content:center;gap:10px;padding:12px 14px;margin-bottom:4px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}.month-navigator strong{text-align:center;text-transform:capitalize;font-size:1.05rem;white-space:nowrap}.month-navigator button{border:1px solid var(--border);border-radius:9px;background:white;min-width:40px;height:38px;font-weight:800;color:var(--primary)}.month-navigator .month-current{padding:0 12px;font-size:.82rem}.dynamic-filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}.dynamic-filter-grid>*{padding:10px;border:1px solid var(--border);border-radius:9px;background:white}@media(max-width:520px){.month-navigator{grid-template-columns:42px minmax(0,1fr) 42px;gap:8px;padding:10px}.month-navigator strong{min-width:0;font-size:.95rem}.month-navigator .month-current{grid-column:1/-1;width:max-content;justify-self:center;height:34px}}`;
+  style.textContent=`
+    .month-navigator{grid-column:1/-1;display:grid;grid-template-columns:42px minmax(150px,210px) 42px auto;grid-template-areas:"prev label next current";align-items:center;justify-content:center;gap:10px;padding:12px 14px;margin-bottom:4px;border:1px solid var(--border);border-radius:14px;background:var(--surface)}
+    .month-navigator .month-prev{grid-area:prev}.month-navigator .month-label{grid-area:label}.month-navigator .month-next{grid-area:next}.month-navigator .month-current{grid-area:current}
+    .month-navigator strong{text-align:center;text-transform:capitalize;font-size:1.05rem;white-space:nowrap}
+    .month-navigator button{border:1px solid var(--border);border-radius:9px;background:white;min-width:40px;height:38px;font-weight:800;color:var(--primary)}
+    .month-navigator .month-current{padding:0 12px;font-size:.82rem}
+    .dynamic-filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px}.dynamic-filter-grid>*{padding:10px;border:1px solid var(--border);border-radius:9px;background:white}
+    @media(max-width:520px){
+      .month-navigator{grid-template-columns:42px minmax(0,1fr) 42px;grid-template-areas:"prev label next" "current current current";gap:8px;padding:10px}
+      .month-navigator strong{min-width:0;font-size:.95rem;overflow:hidden;text-overflow:ellipsis}
+      .month-navigator .month-current{width:max-content;justify-self:center;height:34px}
+    }`;
   document.head.appendChild(style);
 }
