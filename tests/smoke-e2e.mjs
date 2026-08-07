@@ -10,14 +10,14 @@ const today = new Date().toISOString().slice(0,10);
 const browser = await chromium.launch({headless:true});
 const page = await browser.newPage({viewport:{width:1440,height:1000}});
 const errors=[];
-page.on('pageerror',e=>errors.push(`pageerror: ${e.message}`));
-page.on('console',m=>{ if(m.type()==='error') errors.push(`console: ${m.text()}`); });
+page.on('pageerror',e=>{const s=`pageerror: ${e.message}`; errors.push(s); console.error(s);});
+page.on('console',m=>{ if(m.type()==='error'){const s=`console: ${m.text()}`; errors.push(s); console.error(s);} });
+page.on('requestfailed',r=>{const s=`requestfailed: ${r.url()} :: ${r.failure()?.errorText||''}`; console.error(s);});
 
 async function nav(name){
   await page.locator(`.nav-item[data-page="${name}"]`).click();
   await page.locator(`#${name}`).waitFor({state:'visible'});
 }
-async function waitText(selector,rx){ await page.locator(selector).filter({hasText:rx}).waitFor({state:'visible'}); }
 async function setBankFree(name,balance){
   await page.evaluate(()=>{
     const h=document.getElementById('contaBanco');
@@ -37,21 +37,20 @@ async function chooseByText(selector,text){
 
 try{
   await page.goto(baseURL,{waitUntil:'networkidle',timeout:60000});
-  await page.locator('#loginPage').waitFor({state:'visible'});
+  try{await page.locator('#loginPage').waitFor({state:'visible',timeout:8000});}
+  catch(e){console.error('STARTUP_ERRORS\n'+errors.join('\n'));throw e;}
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(password);
   await page.locator('#btnCadastrar').click();
   await page.locator('#appPage').waitFor({state:'visible',timeout:30000});
   assert.equal(await page.locator('#userEmail').textContent(),email);
 
-  // Contas
   await nav('contas');
   await setBankFree('Conta Teste A',1000);
   await setBankFree('Conta Teste B',500);
   await page.locator('#listaContas .account-item').first().waitFor();
   assert.equal(await page.locator('#listaContas .account-item').count(),2);
 
-  // Categorias
   await nav('categorias');
   await page.locator('#categoryOperation').selectOption('todos');
   await page.locator('#categoryName').fill('Categoria E2E');
@@ -59,7 +58,6 @@ try{
   await page.locator('#categoryForm button[type="submit"]').click();
   await page.locator('#categoryList').filter({hasText:'Categoria E2E'}).waitFor();
 
-  // Receita prevista: não deve alterar saldo bancário antes de efetivar.
   await nav('receitas');
   await chooseByText('#receitaConta','Conta Teste A');
   await chooseByText('#receitaCategoria','Categoria E2E');
@@ -80,7 +78,6 @@ try{
   const detailsText=(await page.locator('#detailsBalances').innerText()).replace(/\s+/g,' ');
   if(!/1\.000,00/.test(detailsText)) throw new Error(`Receita prevista alterou o saldo antes da efetivação: ${detailsText}`);
 
-  // Efetiva via menu de três pontos.
   await nav('receitas');
   const revenueRow=page.locator('#listaReceitas .transaction-item',{hasText:'Receita prevista E2E'});
   await revenueRow.locator('.txn-more').click();
@@ -92,7 +89,6 @@ try{
   await page.locator('.settlement-confirm').click();
   await page.waitForTimeout(700);
 
-  // Despesa prevista
   await nav('despesas');
   await chooseByText('#despesaConta','Conta Teste A');
   await chooseByText('#despesaCategoria','Categoria E2E');
@@ -106,7 +102,6 @@ try{
   await page.locator('#listaDespesas').filter({hasText:'Despesa prevista E2E'}).waitFor();
   await page.locator('#listaDespesas .txn-more').first().waitFor();
 
-  // Transferência prevista
   await nav('transferencias');
   await chooseByText('#transferOrigem','Conta Teste A');
   await chooseByText('#transferDestino','Conta Teste B');
@@ -120,7 +115,6 @@ try{
   await page.locator('#listaTransferencias').filter({hasText:'Transferência prevista E2E'}).waitFor();
   await page.locator('#listaTransferencias .txn-more').first().waitFor();
 
-  // Cartão
   await nav('cartoes');
   await page.locator('#cardNome').fill('Cartão E2E');
   await chooseByText('#cardConta','Conta Teste A');
@@ -131,7 +125,6 @@ try{
   await page.locator('#cardSalvar').click();
   await page.locator('#listaCartoes').filter({hasText:'Cartão E2E'}).waitFor();
 
-  // Orçamento e objetivo
   await nav('orcamentos');
   await page.locator('#budgetCategory').fill('Categoria E2E');
   await page.locator('#budgetMonth').fill(today.slice(0,7));
@@ -145,7 +138,6 @@ try{
   await page.locator('#goalForm button[type="submit"]').click();
   await page.locator('#goalList').filter({hasText:'Objetivo E2E'}).waitFor();
 
-  // Filtros, relatórios, configurações, dashboard e gráficos.
   await nav('receitas');
   await page.locator('#receitas .filter-launch').click();
   await page.locator('.filter-modal:not(.hidden)').waitFor({state:'visible'});
