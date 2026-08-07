@@ -1,13 +1,16 @@
-const CACHE_NAME = "app-financas-static-v2";
+const CACHE_NAME = "app-financas-static-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./css/style.css",
+  "./css/money.css",
   "./js/app.js",
   "./js/auth.js",
   "./js/firebase.js",
   "./js/firestore.js",
   "./js/ui.js",
+  "./js/money.js",
+  "./js/contas.js",
   "./manifest.json",
   "./assets/icon-192.png",
   "./assets/icon-512.png"
@@ -29,7 +32,6 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
-
   if (event.request.method !== "GET" || requestUrl.origin !== self.location.origin) return;
 
   event.respondWith(
