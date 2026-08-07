@@ -11,6 +11,7 @@ on:
       - 'sw.js'
       - 'scripts/e2e.mjs'
       - 'scripts/status-e2e.mjs'
+      - 'scripts/card-layout-e2e.mjs'
       - 'scripts/math-audit.mjs'
       - '.github/workflows/e2e.yml'
 
@@ -42,3 +43,5 @@ jobs:
         run: node scripts/e2e.mjs
       - name: Run reversible operation status audit
         run: node scripts/status-e2e.mjs
+      - name: Run card invoice and mobile layout audit
+        run: node scripts/card-layout-e2e.mjs
