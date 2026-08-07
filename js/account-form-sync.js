@@ -1,0 +1,20 @@
+import { auth, db } from "./firebase.js";
+import { collection, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+let user=null,accounts=[],stopAccounts=null;
+const esc=(v="")=>String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c]);
+
+function account(id){return accounts.find(a=>a.id===id)||null;}
+function optionHtml(a){return `<option value="${a.id}" data-currency="${esc(a.moeda||"BRL")}">${esc(a.nome||"Conta")}</option>`;}
+function repopulate(id){const el=document.getElementById(id);if(!el)return;const keep=el.value;el.innerHTML=`<option value="">Selecione...</option>${accounts.map(optionHtml).join("")}`;if(accounts.some(a=>a.id===keep))el.value=keep;}
+function repopulateAll(){["receitaConta","despesaConta","cardConta","transferOrigem","transferDestino"].forEach(repopulate);}
+async function currenciesFor(a){if(!user||!a)return[];const primary=a.moeda||"BRL";try{const snap=await getDocs(collection(db,"users",user.uid,"contas",a.id,"moedas"));return [...new Set([primary,...snap.docs.map(d=>d.data().codigo).filter(Boolean)])];}catch(error){console.error("Falha ao carregar moedas da conta:",error);return[primary];}}
+function setCurrencyNow(select,a){if(!select)return;const primary=a?.moeda||"";select.innerHTML=primary?`<option value="${primary}">${primary}</option>`:"";}
+async function syncSingle(accountId,currencyId){const a=account(document.getElementById(accountId)?.value),currency=document.getElementById(currencyId);if(!currency)return;setCurrencyNow(currency,a);if(!a)return;const token=a.id;const values=await currenciesFor(a);if(document.getElementById(accountId)?.value!==token)return;const keep=currency.value;currency.innerHTML=values.map(v=>`<option value="${v}">${v}</option>`).join("");if(values.includes(keep))currency.value=keep;}
+async function syncTransfer(){const from=account(document.getElementById("transferOrigem")?.value),to=account(document.getElementById("transferDestino")?.value),currency=document.getElementById("transferMoeda"),hint=document.getElementById("transferCurrencyHint");if(!currency)return;if(!from||!to){currency.innerHTML="";if(hint)hint.textContent="Escolha as duas contas para ver as moedas em comum.";return;}const primary=(from.moeda||"BRL")===(to.moeda||"BRL")?(from.moeda||"BRL"):"";currency.innerHTML=primary?`<option value="${primary}">${primary}</option>`:"";if(hint)hint.textContent=primary?"A transferência usa uma moeda disponível nas duas contas.":"Carregando moedas em comum...";const fromId=from.id,toId=to.id,[a,b]=await Promise.all([currenciesFor(from),currenciesFor(to)]);if(document.getElementById("transferOrigem")?.value!==fromId||document.getElementById("transferDestino")?.value!==toId)return;const common=a.filter(v=>b.includes(v));currency.innerHTML=common.map(v=>`<option value="${v}">${v}</option>`).join("");if(hint)hint.textContent=common.length?"A transferência usa uma moeda disponível nas duas contas.":"As contas selecionadas não possuem uma moeda em comum.";}
+function refreshSelectedCurrencies(){syncSingle("receitaConta","receitaMoeda");syncSingle("despesaConta","despesaMoeda");syncSingle("cardConta","cardMoeda");syncTransfer();}
+
+document.addEventListener("change",e=>{if(e.target.id==="receitaConta")syncSingle("receitaConta","receitaMoeda");else if(e.target.id==="despesaConta")syncSingle("despesaConta","despesaMoeda");else if(e.target.id==="cardConta")syncSingle("cardConta","cardMoeda");else if(e.target.id==="transferOrigem"||e.target.id==="transferDestino")syncTransfer();});
+
+onAuthStateChanged(auth,current=>{user=current;if(stopAccounts){stopAccounts();stopAccounts=null;}accounts=[];repopulateAll();if(!current)return;stopAccounts=onSnapshot(collection(db,"users",current.uid,"contas"),snap=>{accounts=snap.docs.map(d=>({id:d.id,...d.data()}));repopulateAll();refreshSelectedCurrencies();},error=>console.error("Falha ao sincronizar contas nos formulários:",error));});
