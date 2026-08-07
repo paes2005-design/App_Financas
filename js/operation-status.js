@@ -28,15 +28,15 @@ function decorateRow(row){
  const info=rowInfo(row);if(!info?.actions)return;
  const source=info.actions.querySelector(info.selector),id=source?.dataset.id;if(!id)return;
  const record=data[info.kind].get(id);if(!record)return;
- const done=isDone(record);
+ const done=isDone(record),statusText=done?"Efetivado":"Pendente",statusTitle=done?"Esta operação já foi efetivada":"Esta operação ainda está pendente";
  let badge=info.actions.querySelector(":scope > .operation-status");
  if(!badge){badge=document.createElement("span");badge.className="operation-status";badge.setAttribute("aria-label","Status da operação");const more=info.actions.querySelector(":scope > .txn-more");more?info.actions.insertBefore(badge,more):info.actions.appendChild(badge);}
- badge.classList.toggle("effective",done);badge.classList.toggle("pending",!done);badge.textContent=done?"Efetivado":"Pendente";badge.title=done?"Esta operação já foi efetivada":"Esta operação ainda está pendente";
+ badge.classList.toggle("effective",done);badge.classList.toggle("pending",!done);if(badge.textContent!==statusText)badge.textContent=statusText;if(badge.title!==statusTitle)badge.title=statusTitle;
  const settle=info.actions.querySelector(".settle-revenue,.settle-expense,.settle-transfer");
- if(settle){settle.textContent=done?"Desefetivar":"Efetivar";settle.dataset.status=done?"effective":"pending";settle.classList.toggle("unsettle-action",done);settle.setAttribute("aria-label",done?"Desefetivar operação":"Efetivar operação");}
+ if(settle){const label=done?"Desefetivar":"Efetivar",aria=done?"Desefetivar operação":"Efetivar operação";if(settle.textContent!==label)settle.textContent=label;if(settle.dataset.status!==(done?"effective":"pending"))settle.dataset.status=done?"effective":"pending";settle.classList.toggle("unsettle-action",done);if(settle.getAttribute("aria-label")!==aria)settle.setAttribute("aria-label",aria);}
 }
 function decorate(){document.querySelectorAll(".transaction-item,.expense-item,.transfer-item").forEach(decorateRow);}
-const observer=new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length||x.removedNodes.length))queueMicrotask(decorate);});
+const observer=new MutationObserver(m=>{if(m.some(x=>[...x.addedNodes].some(n=>n.nodeType===1&&(n.matches?.(".transaction-item,.expense-item,.transfer-item")||n.querySelector?.(".transaction-item,.expense-item,.transfer-item")))))queueMicrotask(decorate);});
 observer.observe(document.body,{childList:true,subtree:true});
 window.addEventListener("period-change",()=>setTimeout(decorate,80));
 
