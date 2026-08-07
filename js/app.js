@@ -1,5 +1,6 @@
 import "./ui.js";
 import "./auth.js";
+import "./contas.js";
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
