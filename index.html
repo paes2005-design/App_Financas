@@ -13,76 +13,22 @@
 </head>
 <body>
   <div id="loading" class="loading" aria-live="polite"><div class="spinner" aria-hidden="true"></div><strong>APP Finanças</strong><span>Carregando...</span></div>
-
-  <section id="loginPage" class="auth-page hidden" aria-labelledby="loginTitle">
-    <div class="login-box">
-      <img class="app-icon" src="./assets/icon-192.png" alt="Ícone do APP Finanças">
-      <h1 id="loginTitle">APP Finanças</h1><p class="subtitle">Controle financeiro pessoal</p>
-      <form id="authForm" novalidate>
-        <label for="email">E-mail</label><input type="email" id="email" autocomplete="email" placeholder="seuemail@exemplo.com" required>
-        <label for="password">Senha</label><input type="password" id="password" autocomplete="current-password" placeholder="Mínimo de 6 caracteres" minlength="6" required>
-        <button type="submit" id="btnLogin" class="primary">Entrar</button><button type="button" id="btnCadastrar" class="secondary">Criar conta</button><button type="button" id="btnRecuperar" class="link-button">Esqueci minha senha</button>
-      </form>
-      <p id="mensagem" class="message" role="status" aria-live="polite"></p><small class="credit">Ícone por DinosoftLabs — Flaticon</small>
-    </div>
-  </section>
-
+  <section id="loginPage" class="auth-page hidden" aria-labelledby="loginTitle"><div class="login-box"><img class="app-icon" src="./assets/icon-192.png" alt="Ícone do APP Finanças"><h1 id="loginTitle">APP Finanças</h1><p class="subtitle">Controle financeiro pessoal</p><form id="authForm" novalidate><label for="email">E-mail</label><input type="email" id="email" autocomplete="email" placeholder="seuemail@exemplo.com" required><label for="password">Senha</label><input type="password" id="password" autocomplete="current-password" placeholder="Mínimo de 6 caracteres" minlength="6" required><button type="submit" id="btnLogin" class="primary">Entrar</button><button type="button" id="btnCadastrar" class="secondary">Criar conta</button><button type="button" id="btnRecuperar" class="link-button">Esqueci minha senha</button></form><p id="mensagem" class="message" role="status" aria-live="polite"></p><small class="credit">Ícone por DinosoftLabs — Flaticon</small></div></section>
   <section id="appPage" class="app-shell hidden">
-    <aside id="sidebar" class="sidebar">
-      <div class="logo-area"><img src="./assets/icon-192.png" alt=""><strong>APP Finanças</strong></div>
-      <nav aria-label="Menu principal">
-        <button type="button" class="nav-item active" data-page="dashboard">Dashboard</button><button type="button" class="nav-item" data-page="contas">Contas</button><button type="button" class="nav-item" data-page="receitas">Receitas</button><button type="button" class="nav-item" data-page="despesas">Despesas</button><button type="button" class="nav-item" data-page="transferencias">Transferências</button><button type="button" class="nav-item" data-page="cartoes">Cartões</button><button type="button" class="nav-item" data-page="categorias">Categorias</button><button type="button" class="nav-item" data-page="orcamentos">Orçamentos</button><button type="button" class="nav-item" data-page="objetivos">Objetivos</button><button type="button" class="nav-item" data-page="relatorios">Relatórios</button><button type="button" class="nav-item" data-page="configuracoes">Configurações</button>
-      </nav><button type="button" id="btnLogout" class="logout">Sair</button>
-    </aside>
-
-    <main class="main-content">
-      <header class="topbar"><button type="button" id="menuButton" class="menu-button" aria-label="Abrir ou fechar menu">☰</button><div><h2 id="pageTitle">Dashboard</h2><small id="userEmail"></small></div></header>
-      <section id="content" class="content">
-        <div id="dashboard" class="app-view dashboard-grid">
-          <article class="card"><span>Saldo total em reais</span><strong id="saldoTotal">R$ 0,00</strong></article><article class="card income"><span>Receitas do mês</span><strong id="receitasMes">R$ 0,00</strong></article><article class="card expense"><span>Despesas do mês</span><strong id="despesasMes">R$ 0,00</strong></article><article class="card"><span>Resultado do mês</span><strong id="resultadoMes">R$ 0,00</strong></article>
-          <article class="panel movements-panel"><h3>Últimas movimentações</h3><div id="listaMovimentacoes" class="empty-state">Nenhuma movimentação cadastrada.</div></article>
-        </div>
-
-        <div id="contas" class="app-view hidden">
-          <div class="page-grid">
-            <article class="panel"><h3>Nova conta</h3><form id="contaForm" class="account-form">
-              <label for="contaBanco">Banco ou instituição</label>
-              <select id="contaBanco" required>
-                <option value="">Selecione...</option>
-                <optgroup label="Segmento S1">
-                  <option value="bb">🟡 Banco do Brasil</option><option value="bradesco">🔴 Bradesco</option><option value="btg">🔵 BTG Pactual</option><option value="caixa">🔷 Caixa Econômica Federal</option><option value="itau">🟠 Itaú</option><option value="santander">🔴 Santander</option>
-                </optgroup>
-                <optgroup label="Segmento S2">
-                  <option value="banrisul">🔵 Banrisul</option><option value="bnb">🔵 Banco do Nordeste</option><option value="bndes">🟢 BNDES</option><option value="citi">🔵 Citibank</option><option value="credit-suisse">🔷 Credit Suisse</option><option value="safra">🟡 Banco Safra</option><option value="bv">🔵 Banco BV</option>
-                </optgroup>
-                <option value="outro">✏️ Outro / nome livre</option>
-              </select>
-
-              <div id="contaNomeLivreGrupo" class="hidden"><label for="contaNomeLivre">Nome da conta</label><input id="contaNomeLivre" type="text" maxlength="60" placeholder="Ex.: Carteira, cooperativa ou banco digital"></div>
-
-              <label for="contaTipo">Tipo</label><select id="contaTipo"><option value="Conta corrente">Conta corrente</option><option value="Poupança">Poupança</option><option value="Carteira">Carteira</option><option value="Conta digital">Conta digital</option><option value="Outro">Outro</option></select>
-
-              <label for="contaSaldoInicial">Saldo inicial</label>
-              <div class="money-field" data-money-field>
-                <div class="money-input-row">
-                  <select id="contaMoeda" data-money-currency aria-label="Moeda do saldo">
-                    <option value="BRL">BRL · Real (R$)</option><option value="USD">USD · Dólar (US$)</option><option value="EUR">EUR · Euro (€)</option><option value="GBP">GBP · Libra (£)</option><option value="JPY">JPY · Iene (¥)</option><option value="CHF">CHF · Franco suíço</option><option value="CAD">CAD · Dólar canadense</option><option value="AUD">AUD · Dólar australiano</option><option value="ARS">ARS · Peso argentino</option><option value="CLP">CLP · Peso chileno</option><option value="MXN">MXN · Peso mexicano</option><option value="CNY">CNY · Yuan</option><option value="UYU">UYU · Peso uruguaio</option><option value="PYG">PYG · Guarani</option>
-                  </select>
-                  <input id="contaSaldoInicial" data-money-input type="text" inputmode="decimal" value="0,00" autocomplete="off" required>
-                  <button type="button" class="calculator-toggle" data-money-calculator aria-label="Abrir calculadora" title="Abrir calculadora">🧮</button>
-                </div>
-              </div>
-
-              <button type="submit" class="primary form-button">Salvar conta</button><p id="contaMensagem" class="message" role="status"></p>
-            </form></article>
-            <article class="panel"><h3>Minhas contas</h3><div id="listaContas"><div class="empty-state">Nenhuma conta cadastrada.</div></div></article>
-          </div>
-        </div>
-
-        <div id="placeholderView" class="app-view hidden"><article class="panel"><h3 id="placeholderTitle">Em desenvolvimento</h3><p class="empty-state">Este módulo será implementado nas próximas etapas.</p></article></div>
-      </section>
-    </main>
-  </section>
-  <script type="module" src="./js/app.js"></script>
-</body>
-</html>
+    <aside id="sidebar" class="sidebar"><div class="logo-area"><img src="./assets/icon-192.png" alt=""><strong>APP Finanças</strong></div><nav aria-label="Menu principal"><button type="button" class="nav-item active" data-page="dashboard">Dashboard</button><button type="button" class="nav-item" data-page="contas">Contas</button><button type="button" class="nav-item" data-page="receitas">Receitas</button><button type="button" class="nav-item" data-page="despesas">Despesas</button><button type="button" class="nav-item" data-page="transferencias">Transferências</button><button type="button" class="nav-item" data-page="cartoes">Cartões</button><button type="button" class="nav-item" data-page="categorias">Categorias</button><button type="button" class="nav-item" data-page="orcamentos">Orçamentos</button><button type="button" class="nav-item" data-page="objetivos">Objetivos</button><button type="button" class="nav-item" data-page="relatorios">Relatórios</button><button type="button" class="nav-item" data-page="configuracoes">Configurações</button></nav><button type="button" id="btnLogout" class="logout">Sair</button></aside>
+    <main class="main-content"><header class="topbar"><button type="button" id="menuButton" class="menu-button" aria-label="Abrir ou fechar menu">☰</button><div><h2 id="pageTitle">Dashboard</h2><small id="userEmail"></small></div></header><section id="content" class="content">
+      <div id="dashboard" class="app-view dashboard-grid"><article class="card"><span>Saldo total em reais</span><strong id="saldoTotal">R$ 0,00</strong></article><article class="card income"><span>Receitas do mês</span><strong id="receitasMes">R$ 0,00</strong></article><article class="card expense"><span>Despesas do mês</span><strong id="despesasMes">R$ 0,00</strong></article><article class="card"><span>Resultado do mês</span><strong id="resultadoMes">R$ 0,00</strong></article><article class="panel movements-panel"><h3>Últimas movimentações</h3><div id="listaMovimentacoes" class="empty-state">Nenhuma movimentação cadastrada.</div></article></div>
+      <div id="contas" class="app-view hidden"><div class="page-grid"><article class="panel"><h3>Nova conta</h3><form id="contaForm" class="account-form">
+        <label for="contaBanco">Banco ou instituição</label><select id="contaBanco" required><option value="">Selecione...</option>
+          <optgroup label="Segmento S1"><option value="bb">Banco do Brasil</option><option value="bradesco">Bradesco</option><option value="btg">BTG Pactual</option><option value="caixa">Caixa Econômica Federal</option><option value="itau">Itaú</option><option value="santander">Santander</option></optgroup>
+          <optgroup label="Segmento S2"><option value="sicoob">Banco Sicoob</option><option value="banrisul">Banrisul</option><option value="sicredi">Banco Cooperativo Sicredi</option><option value="bnb">Banco do Nordeste</option><option value="bndes">BNDES</option><option value="citi">Citibank</option><option value="nubank">Nubank / Nu Pagamentos</option><option value="safra">Banco Safra</option><option value="bv">Banco BV / Votorantim</option><option value="xp">XP</option></optgroup>
+          <optgroup label="Segmento S3"><option value="abc">Banco ABC Brasil</option><option value="agibank">Agibank</option><option value="c6">C6 Bank</option><option value="banestes">Banestes</option><option value="banco-amazonia">Banco da Amazônia</option><option value="daycoval">Banco Daycoval</option><option value="bmg">Banco BMG</option><option value="brb">BRB</option><option value="bs2">Banco BS2</option><option value="inter">Banco Inter</option><option value="mercado-pago">Mercado Pago</option><option value="mercantil">Banco Mercantil</option><option value="pagbank">PagBank</option><option value="picpay">PicPay</option><option value="pine">Banco Pine</option><option value="porto">Porto Bank / Porto Seguro</option><option value="sofisa">Banco Sofisa</option><option value="stone">Stone</option><option value="unicred">Unicred</option><option value="ailos">Ailos</option><option value="cresol">Cresol</option></optgroup>
+          <option value="outro">✏️ Outro / nome livre</option></select>
+        <div id="contaNomeLivreGrupo" class="hidden"><label for="contaNomeLivre">Nome da conta</label><input id="contaNomeLivre" type="text" maxlength="60" placeholder="Ex.: Carteira, cooperativa ou banco digital"></div>
+        <label for="contaTipo">Tipo</label><select id="contaTipo"><option value="Conta corrente">Conta corrente</option><option value="Poupança">Poupança</option><option value="Carteira">Carteira</option><option value="Conta digital">Conta digital</option><option value="Outro">Outro</option></select>
+        <label for="contaSaldoInicial">Saldo inicial</label><div class="money-field" data-money-field><div class="money-input-row"><select id="contaMoeda" data-money-currency aria-label="Moeda do saldo"><option value="BRL">BRL · Real (R$)</option><option value="USD">USD · Dólar (US$)</option><option value="EUR">EUR · Euro (€)</option><option value="GBP">GBP · Libra (£)</option><option value="JPY">JPY · Iene (¥)</option><option value="CHF">CHF · Franco suíço</option><option value="CAD">CAD · Dólar canadense</option><option value="AUD">AUD · Dólar australiano</option><option value="ARS">ARS · Peso argentino</option><option value="CLP">CLP · Peso chileno</option><option value="MXN">MXN · Peso mexicano</option><option value="CNY">CNY · Yuan</option><option value="UYU">UYU · Peso uruguaio</option><option value="PYG">PYG · Guarani</option></select><input id="contaSaldoInicial" data-money-input type="text" inputmode="decimal" value="0,00" autocomplete="off" required><button type="button" class="calculator-toggle" data-money-calculator aria-label="Abrir calculadora" title="Abrir calculadora">🧮</button></div></div>
+        <button type="submit" class="primary form-button">Salvar conta</button><p id="contaMensagem" class="message" role="status"></p></form></article><article class="panel"><h3>Minhas contas</h3><div id="listaContas"><div class="empty-state">Nenhuma conta cadastrada.</div></div></article></div></div>
+      <div id="placeholderView" class="app-view hidden"><article class="panel"><h3 id="placeholderTitle">Em desenvolvimento</h3><p class="empty-state">Este módulo será implementado nas próximas etapas.</p></article></div>
+    </section></main>
+  </section><script type="module" src="./js/app.js"></script>
+</body></html>
