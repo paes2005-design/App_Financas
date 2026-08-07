@@ -5,33 +5,34 @@ on:
   push:
     branches: [main]
     paths:
-      - 'index.html'
       - 'js/**'
       - 'css/**'
-      - 'tests/**'
+      - 'index.html'
+      - 'sw.js'
+      - 'scripts/e2e.mjs'
       - '.github/workflows/e2e.yml'
 
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Playwright library
-        run: npm install --no-save playwright@1.55.0
-      - name: Start local app
+      - name: Install Playwright
         run: |
-          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/app-http.log 2>&1 &
-          echo $! > /tmp/app-http.pid
-          for i in {1..20}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
-          cat /tmp/app-http.log
+          npm install --no-save playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Wait for GitHub Pages
+        run: |
+          for i in {1..36}; do
+            if curl -fsS https://paes2005-design.github.io/App_Financas/ | grep -q 'APP Finanças'; then exit 0; fi
+            sleep 5
+          done
           exit 1
-      - name: Diagnose revenue flow
-        env:
-          APP_URL: http://127.0.0.1:4173/
-        run: |
-          sed -i "s/chromium.launch({headless:true})/chromium.launch({headless:true,channel:'chrome'})/g" tests/diagnose-revenue.mjs
-          node tests/diagnose-revenue.mjs
+      - name: Run authenticated end-to-end test
+        run: node scripts/e2e.mjs
