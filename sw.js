@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-financas-static-v41";
+const CACHE_NAME = "app-financas-static-v42";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -37,6 +37,7 @@ const APP_SHELL = [
   "./js/planned-settlement.js",
   "./js/transaction-insights.js",
   "./js/card-expenses.js",
+  "./js/card-finance-rules.js",
   "./js/remaining-modules.js",
   "./js/account-quotes.js",
   "./manifest.json",
