@@ -29,17 +29,31 @@ function addMini(valueEl,id,leftLabel,rightLabel){
   mini.innerHTML=`<div class="balance-mini-item"><span>${leftLabel}</span><strong id="${id}Left" class="financial-value">R$ 0,00</strong></div><div class="balance-mini-item"><span>${rightLabel}</span><strong id="${id}Right" class="financial-value">R$ 0,00</strong></div>`;
   valueEl.insertAdjacentElement("afterend",mini);
 }
-addMini(saldoTotal,"dashboardBalanceMini","Inicial","Previsão");
-addMini(receitasMes,"dashboardRevenueMini","Realizado","Previsão");
-addMini(despesasMes,"dashboardExpenseMini","Realizado","Previsão");
-addMini(resultadoMes,"dashboardResultMini","Realizado","Previsão");
+addMini(saldoTotal,"dashboardBalanceMini","Inicial","Previsão acumulada");
+addMini(receitasMes,"dashboardRevenueMini","Efetivado no mês","Previsão acumulada");
+addMini(despesasMes,"dashboardExpenseMini","Efetivado no mês","Previsão acumulada");
+addMini(resultadoMes,"dashboardResultMini","Efetivado no mês","Previsão acumulada");
 
 function current(rows){const p=getPeriod("dashboard");return rows.filter(r=>r.data>=p.start&&r.data<=p.end);}
-function realized(rows){return rows.filter(r=>r.planejada!==true);}
+function settled(rows){return rows.filter(r=>r.efetivada===true);}
 async function convertedRows(rows){if(!rows.length)return 0;return (await convertAccountsToBRL(rows.map(r=>({moeda:r.moeda||"BRL",saldoInicial:Number(r.valor||0)})))).total;}
 function monthKey(date){return String(date).slice(0,7);}
 function timestampDate(value){if(!value)return null;if(typeof value.toDate==="function")return value.toDate();if(typeof value.seconds==="number")return new Date(value.seconds*1000);const d=new Date(value);return Number.isNaN(d.getTime())?null:d;}
 function accountStartMonth(acc){const d=timestampDate(acc.criadoEm||acc.createdAt||acc.dataCriacao);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:monthKey(new Date().toISOString());}
+
+async function accountStartInfo(){
+  if(!user)return{start:getPeriod("dashboard").start,initial:0};
+  const snap=await getDocs(collection(db,"users",user.uid,"contas"));
+  let earliest=null;
+  const bases=[];
+  snap.docs.forEach(d=>{
+    const acc={id:d.id,...d.data()},m=accountStartMonth(acc);
+    if(!earliest||m<earliest)earliest=m;
+    bases.push({moeda:acc.moeda||"BRL",saldoInicial:Number(acc.saldoInicial||0)});
+  });
+  const initial=bases.length?(await convertAccountsToBRL(bases)).total:0;
+  return{start:earliest?`${earliest}-01`:getPeriod("dashboard").start,initial};
+}
 
 async function openingBalance(){
   if(!user)return 0;
@@ -52,7 +66,7 @@ async function openingBalance(){
     const base=`users/${user.uid}/contas/${acc.id}`;
     const [currSnap,movSnap]=await Promise.all([getDocs(collection(db,base,"moedas")),getDocs(collection(db,base,"movimentacoes"))]);
     const currencies=[{codigo:acc.moeda||"BRL",saldoInicial:Number(acc.saldoInicial||0)},...currSnap.docs.map(d=>d.data())];
-    const movs=movSnap.docs.map(d=>d.data()).filter(m=>m.data&&m.data<p.start&&m.planejada!==true);
+    const movs=movSnap.docs.map(d=>d.data()).filter(m=>m.data&&m.data<p.start&&m.efetivada===true);
     currencies.forEach(c=>{
       const code=c.codigo||"BRL";let value=Number(c.saldoInicial||0);
       movs.filter(m=>(m.moeda||"BRL")===code).forEach(m=>{value+=m.tipo==="receita"?Number(m.valor||0):-Number(m.valor||0);});
@@ -72,21 +86,31 @@ function setPair(id,left,right,{negativeRight=false,negativeLeft=false}={}){
 async function render(){
   const my=++token;
   try{
-    const monthR=current(receitas),monthD=current(despesas),doneR=realized(monthR),doneD=realized(monthD);
-    const [initial,realR,realD,forecastR,forecastD]=await Promise.all([openingBalance(),convertedRows(doneR),convertedRows(doneD),convertedRows(monthR),convertedRows(monthD)]);
+    const p=getPeriod("dashboard");
+    const monthR=current(receitas),monthD=current(despesas),doneR=settled(monthR),doneD=settled(monthD);
+    const startInfo=await accountStartInfo();
+    const cumulativeR=receitas.filter(r=>r.data>=startInfo.start&&r.data<=p.end);
+    const cumulativeD=despesas.filter(r=>r.data>=startInfo.start&&r.data<=p.end);
+    const [initial,realR,realD,forecastR,forecastD]=await Promise.all([
+      openingBalance(),convertedRows(doneR),convertedRows(doneD),convertedRows(cumulativeR),convertedRows(cumulativeD)
+    ]);
     if(my!==token)return;
-    const realResult=realR-realD,forecastResult=forecastR-forecastD,forecastBalance=initial+forecastResult;
 
-    // Os valores grandes representam o que já foi efetivado no mês.
+    const realResult=realR-realD;
+    const forecastResult=forecastR-forecastD;
+    const forecastBalance=startInfo.initial+forecastResult;
+
+    // Números grandes: somente operações efetivadas da competência selecionada.
     if(receitasMes)receitasMes.textContent=formatMoney(realR,"BRL");
     if(despesasMes)despesasMes.textContent=formatMoney(realD,"BRL");
     if(resultadoMes){resultadoMes.textContent=formatMoney(realResult,"BRL");resultadoMes.style.color=realResult<0?"var(--danger)":"";}
 
+    // Previsões: cumulativas desde o início do uso do app até o fim do mês selecionado.
     setPair("dashboardBalanceMini",initial,forecastBalance,{negativeRight:true,negativeLeft:true});
     setPair("dashboardRevenueMini",realR,forecastR);
     setPair("dashboardExpenseMini",realD,forecastD);
     setPair("dashboardResultMini",realResult,forecastResult,{negativeRight:true,negativeLeft:true});
-  }catch(error){console.error("Falha ao calcular realizado/previsão da dashboard:",error);}
+  }catch(error){console.error("Falha ao calcular efetivado/previsão acumulada da dashboard:",error);}
 }
 
 function annotateInfo(){
