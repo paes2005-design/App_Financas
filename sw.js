@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-financas-static-v8";
+const CACHE_NAME = "app-financas-static-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -13,6 +13,8 @@ const APP_SHELL = [
   "./js/bank-picker.js",
   "./js/exchange.js",
   "./js/contas.js",
+  "./js/receitas.js",
+  "./js/account-quotes.js",
   "./manifest.json",
   "./assets/icon-192.png",
   "./assets/icon-512.png"
