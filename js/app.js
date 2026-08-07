@@ -4,6 +4,7 @@ import "./ui.js";
 import "./auth.js";
 import { initBankPicker } from "./bank-picker.js";
 import "./contas.js";
+import "./account-quotes.js";
 
 initBankPicker();
 
