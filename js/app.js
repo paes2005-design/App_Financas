@@ -4,6 +4,8 @@ import "./categorias.js";
 import "./receitas.js";
 import "./receitas-summary.js";
 import "./despesas.js";
+import "./transferencias.js";
+import "./cartoes.js";
 import "./period-views.js";
 import "./dashboard.js";
 import "./privacy-eye.js";
