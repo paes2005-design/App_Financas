@@ -3,6 +3,7 @@ import "./period.js";
 import "./categorias.js";
 import "./receitas.js";
 import "./receitas-summary.js";
+import "./despesas.js";
 import "./period-views.js";
 import "./dashboard.js";
 import "./ui.js";
