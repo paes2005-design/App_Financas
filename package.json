@@ -1,0 +1,7 @@
+{
+  "name": "app-financas-pwa",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PWA estático de controle financeiro conectado ao Firebase",
+  "type": "module"
+}
