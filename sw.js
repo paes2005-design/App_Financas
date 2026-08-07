@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-financas-static-v40";
+const CACHE_NAME = "app-financas-static-v41";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -14,7 +14,7 @@ const APP_SHELL = [
   "./js/period-views.js",
   "./js/dashboard.js",
   "./js/dashboard-currency-breakdown.js",
-  "./js/dashboard-balance-forecast.js",
+  "./js/dashboard-balance-forecast-v2.js",
   "./js/dashboard-balance-guard.js",
   "./js/dashboard-analytics.js",
   "./js/filter-modal.js",
@@ -32,7 +32,7 @@ const APP_SHELL = [
   "./js/transaction-actions.js",
   "./js/quick-settlement.js",
   "./js/planned-edit-guard.js",
-  "./js/recurrence.js",
+  "./js/recurrence-v2.js",
   "./js/recurrence-period-bridge.js",
   "./js/planned-settlement.js",
   "./js/transaction-insights.js",
