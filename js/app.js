@@ -8,6 +8,7 @@ import "./transferencias.js";
 import "./cartoes.js";
 import "./account-form-sync.js";
 import "./transaction-actions.js";
+import "./operation-status.js";
 import "./planned-edit-guard.js";
 import "./recurrence-v4.js";
 import "./recurrence-period-bridge.js";
