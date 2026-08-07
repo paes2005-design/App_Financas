@@ -8,7 +8,7 @@ on:
       - 'index.html'
       - 'js/**'
       - 'css/**'
-      - 'tests/smoke-e2e.mjs'
+      - 'tests/**'
       - '.github/workflows/e2e.yml'
 
 jobs:
@@ -31,7 +31,7 @@ jobs:
           for i in {1..20}; do curl -fsS http://127.0.0.1:4173/ >/dev/null && exit 0; sleep 1; done
           cat /tmp/app-http.log
           exit 1
-      - name: Run browser smoke test
+      - name: Run comprehensive browser test
         env:
           APP_URL: http://127.0.0.1:4173/
-        run: node tests/smoke-e2e.mjs
+        run: node tests/full-e2e.mjs
