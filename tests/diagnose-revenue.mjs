@@ -1,5 +1,4 @@
 import { chromium } from 'playwright';
-const page=(await chromium.launch({headless:true})).newPage;
 const browser=await chromium.launch({headless:true});const p=await browser.newPage();
 const email=`diag.${Date.now()}@example.com`,password='Teste123!',today=new Date().toISOString().slice(0,10);
 p.on('pageerror',e=>console.error('PAGEERROR',e.message));p.on('console',m=>{if(m.type()==='error')console.error('CONSOLE',m.text())});
