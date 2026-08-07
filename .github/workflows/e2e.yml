@@ -10,6 +10,7 @@ on:
       - 'index.html'
       - 'sw.js'
       - 'scripts/e2e.mjs'
+      - 'scripts/math-audit.mjs'
       - '.github/workflows/e2e.yml'
 
 jobs:
@@ -23,6 +24,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Run deterministic financial math audit
+        run: node scripts/math-audit.mjs
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.54.2
