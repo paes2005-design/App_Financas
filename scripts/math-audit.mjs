@@ -33,9 +33,9 @@ test('fatura até fechamento fica na competência atual',()=>eq(invoiceMonth('20
 test('fatura após fechamento vai para próxima competência',()=>eq(invoiceMonth('2026-08-21',20),'2026-09'));
 test('parcelas de cartão respeitam frequência',()=>{eq(nextDate('2026-08-21','mensal',2),'2026-10-21');eq(nextDate('2026-08-21','trimestral',2),'2027-02-21');});
 
-const recurrence=fs.readFileSync('js/recurrence-v3.js','utf8');
+const recurrence=fs.readFileSync('js/recurrence-v4.js','utf8');
 const dashboard=fs.readFileSync('js/dashboard-balance-forecast-v2.js','utf8');
-const cardRules=fs.readFileSync('js/card-finance-rules-v2.js','utf8');
+const cardRules=fs.readFileSync('js/card-finance-rules-v3.js','utf8');
 const formUX=fs.readFileSync('js/transaction-form-experience.js','utf8');
 const dashUX=fs.readFileSync('js/dashboard-ui-refinements.js','utf8');
 const dateDisplay=fs.readFileSync('js/date-display.js','utf8');
