@@ -1,4 +1,5 @@
 import "./money.js";
+import "./categorias.js";
 import "./receitas.js";
 import "./ui.js";
 import "./auth.js";
