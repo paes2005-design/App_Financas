@@ -2,6 +2,7 @@ import { getRateToBRL } from "./exchange.js";
 
 const detailsBalances = document.getElementById("detailsBalances");
 let refreshToken = 0;
+let refreshTimer = null;
 
 function currencyFromCard(card) {
   const label = card.querySelector("span")?.textContent?.trim() || "";
@@ -54,8 +55,15 @@ async function renderQuotes() {
   }));
 }
 
+function scheduleQuoteRender() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(renderQuotes, 50);
+}
+
 if (detailsBalances) {
-  const observer = new MutationObserver(() => renderQuotes());
-  observer.observe(detailsBalances, { childList: true, subtree: true });
+  const observer = new MutationObserver(scheduleQuoteRender);
+  // Observa somente a troca do conteúdo principal. Alterações internas nas linhas
+  // de cotação não podem disparar novamente o observador.
+  observer.observe(detailsBalances, { childList: true, subtree: false });
   renderQuotes();
 }
