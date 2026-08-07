@@ -42,21 +42,30 @@ function timestampDate(value){if(!value)return null;if(typeof value.toDate==="fu
 function accountStartMonth(acc){const d=timestampDate(acc.criadoEm||acc.createdAt||acc.dataCriacao);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:monthKey(new Date().toISOString());}
 
 async function accountStartInfo(){
-  if(!user)return{start:getPeriod("dashboard").start,initial:0};
+  const p=getPeriod("dashboard"),selectedMonth=monthKey(p.start);
+  if(!user)return{start:p.start,initial:0,beforeStart:true,accountStarts:new Map()};
   const snap=await getDocs(collection(db,"users",user.uid,"contas"));
   let earliest=null;
   const bases=[];
+  const accountStarts=new Map();
   snap.docs.forEach(d=>{
     const acc={id:d.id,...d.data()},m=accountStartMonth(acc);
+    accountStarts.set(acc.id,`${m}-01`);
     if(!earliest||m<earliest)earliest=m;
-    bases.push({moeda:acc.moeda||"BRL",saldoInicial:Number(acc.saldoInicial||0)});
+    if(selectedMonth>=m)bases.push({moeda:acc.moeda||"BRL",saldoInicial:Number(acc.saldoInicial||0)});
   });
-  const initial=bases.length?(await convertAccountsToBRL(bases)).total:0;
-  return{start:earliest?`${earliest}-01`:getPeriod("dashboard").start,initial};
+  const beforeStart=Boolean(earliest&&selectedMonth<earliest);
+  const initial=!beforeStart&&bases.length?(await convertAccountsToBRL(bases)).total:0;
+  return{start:earliest?`${earliest}-01`:p.start,initial,beforeStart,accountStarts};
 }
 
-async function openingBalance(){
-  if(!user)return 0;
+function validFromAccountStart(row,startInfo){
+  const start=row.contaId?startInfo.accountStarts.get(row.contaId):startInfo.start;
+  return !start||!row.data||row.data>=start;
+}
+
+async function openingBalance(startInfo){
+  if(!user||startInfo.beforeStart)return 0;
   const p=getPeriod("dashboard"),selectedMonth=monthKey(p.start);
   const accountsSnap=await getDocs(collection(db,"users",user.uid,"contas"));
   const currencyTotals=new Map();
@@ -66,7 +75,8 @@ async function openingBalance(){
     const base=`users/${user.uid}/contas/${acc.id}`;
     const [currSnap,movSnap]=await Promise.all([getDocs(collection(db,base,"moedas")),getDocs(collection(db,base,"movimentacoes"))]);
     const currencies=[{codigo:acc.moeda||"BRL",saldoInicial:Number(acc.saldoInicial||0)},...currSnap.docs.map(d=>d.data())];
-    const movs=movSnap.docs.map(d=>d.data()).filter(m=>m.data&&m.data<p.start&&m.efetivada===true);
+    const accountStart=`${startMonth}-01`;
+    const movs=movSnap.docs.map(d=>d.data()).filter(m=>m.data&&m.data>=accountStart&&m.data<p.start&&m.efetivada===true);
     currencies.forEach(c=>{
       const code=c.codigo||"BRL";let value=Number(c.saldoInicial||0);
       movs.filter(m=>(m.moeda||"BRL")===code).forEach(m=>{value+=m.tipo==="receita"?Number(m.valor||0):-Number(m.valor||0);});
@@ -87,12 +97,27 @@ async function render(){
   const my=++token;
   try{
     const p=getPeriod("dashboard");
-    const monthR=current(receitas),monthD=current(despesas),doneR=settled(monthR),doneD=settled(monthD);
     const startInfo=await accountStartInfo();
-    const cumulativeR=receitas.filter(r=>r.data>=startInfo.start&&r.data<=p.end);
-    const cumulativeD=despesas.filter(r=>r.data>=startInfo.start&&r.data<=p.end);
+    if(my!==token)return;
+
+    if(startInfo.beforeStart){
+      if(receitasMes)receitasMes.textContent=formatMoney(0,"BRL");
+      if(despesasMes)despesasMes.textContent=formatMoney(0,"BRL");
+      if(resultadoMes){resultadoMes.textContent=formatMoney(0,"BRL");resultadoMes.style.color="";}
+      setPair("dashboardBalanceMini",0,0,{negativeRight:true,negativeLeft:true});
+      setPair("dashboardRevenueMini",0,0);
+      setPair("dashboardExpenseMini",0,0);
+      setPair("dashboardResultMini",0,0,{negativeRight:true,negativeLeft:true});
+      return;
+    }
+
+    const validReceitas=receitas.filter(r=>validFromAccountStart(r,startInfo));
+    const validDespesas=despesas.filter(r=>validFromAccountStart(r,startInfo));
+    const monthR=current(validReceitas),monthD=current(validDespesas),doneR=settled(monthR),doneD=settled(monthD);
+    const cumulativeR=validReceitas.filter(r=>r.data>=startInfo.start&&r.data<=p.end);
+    const cumulativeD=validDespesas.filter(r=>r.data>=startInfo.start&&r.data<=p.end);
     const [initial,realR,realD,forecastR,forecastD]=await Promise.all([
-      openingBalance(),convertedRows(doneR),convertedRows(doneD),convertedRows(cumulativeR),convertedRows(cumulativeD)
+      openingBalance(startInfo),convertedRows(doneR),convertedRows(doneD),convertedRows(cumulativeR),convertedRows(cumulativeD)
     ]);
     if(my!==token)return;
 
@@ -100,12 +125,10 @@ async function render(){
     const forecastResult=forecastR-forecastD;
     const forecastBalance=startInfo.initial+forecastResult;
 
-    // Números grandes: somente operações efetivadas da competência selecionada.
     if(receitasMes)receitasMes.textContent=formatMoney(realR,"BRL");
     if(despesasMes)despesasMes.textContent=formatMoney(realD,"BRL");
     if(resultadoMes){resultadoMes.textContent=formatMoney(realResult,"BRL");resultadoMes.style.color=realResult<0?"var(--danger)":"";}
 
-    // Previsões: cumulativas desde o início do uso do app até o fim do mês selecionado.
     setPair("dashboardBalanceMini",initial,forecastBalance,{negativeRight:true,negativeLeft:true});
     setPair("dashboardRevenueMini",realR,forecastR);
     setPair("dashboardExpenseMini",realD,forecastD);
