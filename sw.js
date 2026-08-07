@@ -1,4 +1,4 @@
-const CACHE_NAME = "app-financas-static-v42";
+const CACHE_NAME = "app-financas-static-v43";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -17,6 +17,8 @@ const APP_SHELL = [
   "./js/dashboard-balance-forecast-v2.js",
   "./js/dashboard-balance-guard.js",
   "./js/dashboard-analytics.js",
+  "./js/dashboard-ui-refinements.js",
+  "./js/date-display.js",
   "./js/filter-modal.js",
   "./js/privacy-eye.js",
   "./js/bank-picker.js",
@@ -30,14 +32,15 @@ const APP_SHELL = [
   "./js/cartoes.js",
   "./js/account-form-sync.js",
   "./js/transaction-actions.js",
-  "./js/quick-settlement.js",
   "./js/planned-edit-guard.js",
-  "./js/recurrence-v2.js",
+  "./js/recurrence-v3.js",
   "./js/recurrence-period-bridge.js",
   "./js/planned-settlement.js",
   "./js/transaction-insights.js",
   "./js/card-expenses.js",
-  "./js/card-finance-rules.js",
+  "./js/card-finance-rules-v2.js",
+  "./js/card-fixed-sync.js",
+  "./js/transaction-form-experience.js",
   "./js/remaining-modules.js",
   "./js/account-quotes.js",
   "./manifest.json",
