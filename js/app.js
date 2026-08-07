@@ -8,6 +8,8 @@ import "./transferencias.js";
 import "./cartoes.js";
 import "./recurrence.js";
 import "./recurrence-period-bridge.js";
+import "./transaction-insights.js";
+import "./card-expenses.js";
 import "./period-views.js";
 import "./dashboard.js";
 import "./dashboard-currency-breakdown.js";
