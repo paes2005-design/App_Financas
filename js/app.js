@@ -1,6 +1,9 @@
 import "./money.js";
+import "./period.js";
 import "./categorias.js";
 import "./receitas.js";
+import "./period-views.js";
+import "./dashboard.js";
 import "./ui.js";
 import "./auth.js";
 import { initBankPicker } from "./bank-picker.js";
