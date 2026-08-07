@@ -15,6 +15,7 @@ import "./recurrence-period-bridge.js";
 import "./planned-settlement.js";
 import "./transaction-insights.js";
 import "./card-expenses.js";
+import "./card-finance-rules.js";
 import "./remaining-modules.js";
 import "./period-views.js";
 import "./dashboard.js";
