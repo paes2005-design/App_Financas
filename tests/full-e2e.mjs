@@ -11,7 +11,7 @@ async function nav(id){await page.locator(`.nav-item[data-page="${id}"]`).click(
 async function choose(sel,text){const o=page.locator(`${sel} option`,{hasText:text}).first();await o.waitFor();const v=await o.getAttribute('value');assert(v);await page.locator(sel).selectOption(v);}
 async function freeAccount(name,balance){await page.evaluate(()=>{const h=document.querySelector('#contaBanco');h.value='outro';h.dispatchEvent(new Event('change',{bubbles:true}));});await page.locator('#contaNomeLivre').fill(name);await page.locator('#contaSaldoInicial').fill(`${balance},00`);await page.locator('#contaForm button[type=submit]').click();await page.locator('#contaMensagem').filter({hasText:/sucesso/i}).waitFor();}
 try{
- await page.goto(baseURL,{waitUntil:'networkidle',timeout:60000});
+ await page.goto(baseURL,{waitUntil:'domcontentloaded',timeout:60000});
  await page.locator('#loginPage').waitFor({state:'visible',timeout:10000});
  await page.locator('#email').fill(email);await page.locator('#password').fill(password);await page.locator('#btnCadastrar').click();
  await page.locator('#appPage').waitFor({state:'visible',timeout:30000});
@@ -19,8 +19,7 @@ try{
 
  await nav('contas'); await freeAccount('Conta Teste A',1000); await freeAccount('Conta Teste B',500);
  assert.equal(await page.locator('#listaContas .account-item').count(),2);console.log('CONTAS_OK');
- // Reload para validar persistência e garantir que todos os módulos recarreguem as contas.
- await page.reload({waitUntil:'networkidle'});await page.locator('#appPage').waitFor({state:'visible',timeout:30000});
+ await page.reload({waitUntil:'domcontentloaded',timeout:30000});await page.locator('#appPage').waitFor({state:'visible',timeout:30000});
 
  await nav('categorias');await page.locator('#categoryOperation').selectOption('todos');await page.locator('#categoryName').fill('Categoria E2E');await page.locator('#categorySubcategories').fill('Sub A, Sub B');await page.locator('#categoryForm button[type=submit]').click();await page.locator('#categoryList').filter({hasText:'Categoria E2E'}).waitFor();console.log('CATEGORIAS_OK');
 
@@ -32,7 +31,6 @@ try{
 
  await nav('despesas');await choose('#despesaConta','Conta Teste A');await choose('#despesaCategoria','Categoria E2E');if(await page.locator('#despesaSubcategoria option',{hasText:'Sub A'}).count())await page.locator('#despesaSubcategoria').selectOption({label:'Sub A'});await page.locator('#despesaDescricao').fill('Despesa prevista E2E');await page.locator('#despesaData').fill(today);await page.locator('#despesaValor').fill('25,00');if(await page.locator('[data-quick-settle="despesa"]').isChecked())await page.locator('[data-quick-settle="despesa"]').uncheck();await page.locator('#salvarDespesa').click();await page.locator('#listaDespesas').filter({hasText:'Despesa prevista E2E'}).waitFor();await page.locator('#listaDespesas .txn-more').first().waitFor();console.log('DESPESA_OK');
 
- // Testa parcelamento previsto.
  await choose('#despesaConta','Conta Teste A');await choose('#despesaCategoria','Categoria E2E');await page.locator('#despesaDescricao').fill('Despesa parcelada E2E');await page.locator('#despesaData').fill(today);await page.locator('#despesaValor').fill('300,00');await page.locator('#despesaRecorrencia').selectOption('parcelada');await page.locator('#despesaParcelas').fill('3');await page.locator('#despesaValorModo').selectOption('total');await page.locator('#salvarDespesa').click();await page.locator('#listaDespesas').filter({hasText:'Despesa parcelada E2E'}).waitFor();console.log('PARCELAMENTO_OK');
 
  await nav('transferencias');await choose('#transferOrigem','Conta Teste A');await choose('#transferDestino','Conta Teste B');await choose('#transferCategoria','Categoria E2E');await page.locator('#transferDescricao').fill('Transferência prevista E2E');await page.locator('#transferData').fill(today);await page.locator('#transferValor').fill('10,00');if(await page.locator('[data-quick-settle="transferencia"]').isChecked())await page.locator('[data-quick-settle="transferencia"]').uncheck();await page.locator('#transferSalvar').click();await page.locator('#listaTransferencias').filter({hasText:'Transferência prevista E2E'}).waitFor();await page.locator('#listaTransferencias .txn-more').first().waitFor();console.log('TRANSFERENCIA_OK');
