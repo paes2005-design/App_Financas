@@ -13,7 +13,14 @@ style.textContent=`
 .operation-status.pending{color:#155e75;background:linear-gradient(135deg,#e0f2fe,#dbeafe);border-color:#bae6fd}.operation-status.pending::before{background:#0284c7}
 .operation-status.effective{color:#166534;background:linear-gradient(135deg,#dcfce7,#d1fae5);border-color:#bbf7d0}.operation-status.effective::before{background:#16a34a}
 .txn-menu .unsettle-action{color:#166534!important;font-weight:750!important}.txn-menu .unsettle-action:hover{background:#ecfdf5!important}
-@media(max-width:620px){.transaction-value,.expense-value,.transfer-value{padding-right:42px!important}.operation-status{position:static;transform:none;margin:7px 38px 0 0;min-width:86px;padding:5px 9px;font-size:.72rem;float:right}}
+@media(max-width:620px){
+ .transaction-item,.expense-item,.transfer-item{display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:8px 10px;align-items:start!important}
+ .transaction-value,.expense-value,.transfer-value{position:relative!important;padding-right:38px!important;min-width:116px!important;grid-column:2;grid-row:1;text-align:right!important}
+ .transaction-actions,.expense-actions,.transfer-actions{grid-column:1/-1;grid-row:2;display:flex!important;justify-content:flex-end!important;align-items:center!important;min-height:32px;margin:2px 0 0!important;position:relative!important;padding-right:38px}
+ .operation-status{position:static!important;transform:none!important;float:none!important;margin:0!important;min-width:82px;padding:5px 9px;font-size:.7rem;line-height:1.15;order:1}
+ .txn-more{top:50%!important;right:0!important;transform:translateY(-50%)!important;order:2}
+}
+@media(max-width:380px){.operation-status{min-width:76px;font-size:.66rem;padding:5px 7px}.transaction-value,.expense-value,.transfer-value{min-width:104px!important}}
 `;
 document.head.appendChild(style);
 
@@ -28,16 +35,14 @@ function decorateRow(row){
  const info=rowInfo(row);if(!info?.actions)return;
  const source=info.actions.querySelector(info.selector),id=source?.dataset.id;if(!id)return;
  const record=data[info.kind].get(id);if(!record)return;
- const done=isDone(record),statusText=done?"Efetivado":"Pendente",statusTitle=done?"Esta operação já foi efetivada":"Esta operação ainda está pendente";
+ const done=isDone(record);
  let badge=info.actions.querySelector(":scope > .operation-status");
  if(!badge){badge=document.createElement("span");badge.className="operation-status";badge.setAttribute("aria-label","Status da operação");const more=info.actions.querySelector(":scope > .txn-more");more?info.actions.insertBefore(badge,more):info.actions.appendChild(badge);}
- badge.classList.toggle("effective",done);badge.classList.toggle("pending",!done);if(badge.textContent!==statusText)badge.textContent=statusText;if(badge.title!==statusTitle)badge.title=statusTitle;
+ badge.classList.toggle("effective",done);badge.classList.toggle("pending",!done);badge.textContent=done?"Efetivado":"Pendente";badge.title=done?"Esta operação já foi efetivada":"Esta operação ainda está pendente";
  const settle=info.actions.querySelector(".settle-revenue,.settle-expense,.settle-transfer");
- if(settle){const label=done?"Desefetivar":"Efetivar",aria=done?"Desefetivar operação":"Efetivar operação";if(settle.textContent!==label)settle.textContent=label;if(settle.dataset.status!==(done?"effective":"pending"))settle.dataset.status=done?"effective":"pending";settle.classList.toggle("unsettle-action",done);if(settle.getAttribute("aria-label")!==aria)settle.setAttribute("aria-label",aria);}
+ if(settle){settle.textContent=done?"Desefetivar":"Efetivar";settle.dataset.status=done?"effective":"pending";settle.classList.toggle("unsettle-action",done);settle.setAttribute("aria-label",done?"Desefetivar operação":"Efetivar operação");}
 }
 function decorate(){document.querySelectorAll(".transaction-item,.expense-item,.transfer-item").forEach(decorateRow);}
-const observer=new MutationObserver(m=>{if(m.some(x=>[...x.addedNodes].some(n=>n.nodeType===1&&(n.matches?.(".transaction-item,.expense-item,.transfer-item")||n.querySelector?.(".transaction-item,.expense-item,.transfer-item")))))queueMicrotask(decorate);});
-observer.observe(document.body,{childList:true,subtree:true});
 window.addEventListener("period-change",()=>setTimeout(decorate,80));
 
 onAuthStateChanged(auth,current=>{
