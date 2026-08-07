@@ -1,14 +1,33 @@
 const sidebar = document.getElementById("sidebar");
 const menuButton = document.getElementById("menuButton");
 const pageTitle = document.getElementById("pageTitle");
+const dashboard = document.getElementById("dashboard");
+const contas = document.getElementById("contas");
+const placeholder = document.getElementById("placeholderView");
+const placeholderTitle = document.getElementById("placeholderTitle");
 
 menuButton.addEventListener("click", () => sidebar.classList.toggle("open"));
+
+function abrirPagina(page, titulo) {
+  dashboard.classList.add("hidden");
+  contas.classList.add("hidden");
+  placeholder.classList.add("hidden");
+
+  if (page === "dashboard") dashboard.classList.remove("hidden");
+  else if (page === "contas") contas.classList.remove("hidden");
+  else {
+    placeholderTitle.textContent = titulo;
+    placeholder.classList.remove("hidden");
+  }
+}
 
 document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".nav-item").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
-    pageTitle.textContent = button.textContent.trim();
+    const titulo = button.textContent.trim();
+    pageTitle.textContent = titulo;
+    abrirPagina(button.dataset.page, titulo);
     sidebar.classList.remove("open");
   });
 });
